@@ -1,0 +1,404 @@
+<?xml version="1.0" ?><!DOCTYPE TS><TS version="2.1" language="ar">
+<context>
+    <name>Action</name>
+    <message>
+        <source>Display in file manager</source>
+        <translation>العرض في مدير الملفات</translation>
+    </message>
+    <message>
+        <source>Clear log</source>
+        <translation>سجل نظيف</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>تحديث</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the log?</source>
+        <translation>هل أنت متأكد أنك تريد مسح السجل؟</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Confirm</source>
+        <translation>تؤكد</translation>
+    </message>
+</context>
+<context>
+    <name>Button</name>
+    <message>
+        <source>All</source>
+        <translation>الكل</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>اليوم</translation>
+    </message>
+    <message>
+        <source>3 days</source>
+        <translation>3 أيام</translation>
+    </message>
+    <message>
+        <source>1 week</source>
+        <translation>1 أسبوع</translation>
+    </message>
+    <message>
+        <source>1 month</source>
+        <translation>1 شهر</translation>
+    </message>
+    <message>
+        <source>3 months</source>
+        <translation>3 أشهر</translation>
+    </message>
+    <message>
+        <source>Export</source>
+        <translation type="vanished">تصدير</translation>
+    </message>
+    <message>
+        <source>Export</source>
+        <comment>button</comment>
+        <translation>تصدير</translation>
+    </message>
+</context>
+<context>
+    <name>ComboBox</name>
+    <message>
+        <source>All</source>
+        <translation>الكل</translation>
+    </message>
+    <message>
+        <source>Emergency</source>
+        <translation>طارئ</translation>
+    </message>
+    <message>
+        <source>Alert</source>
+        <translation>إنتباه</translation>
+    </message>
+    <message>
+        <source>Critical</source>
+        <translation>خطر</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+    <message>
+        <source>Notice</source>
+        <translation>ملاحظة</translation>
+    </message>
+    <message>
+        <source>Info</source>
+        <translation>معلومات</translation>
+    </message>
+    <message>
+        <source>Debug</source>
+        <translation>التصحيح</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>تسجيل الدخول</translation>
+    </message>
+    <message>
+        <source>Boot</source>
+        <translation>الإقلاع</translation>
+    </message>
+    <message>
+        <source>Shutdown</source>
+        <translation>إيقاف التشغيل</translation>
+    </message>
+    <message>
+        <source>Super critical</source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Trace</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+<context>
+    <name>DisplayContent</name>
+    <message>
+        <source>TEXT (*.txt);; Doc (*.doc);; Xls (*.xls);; Html (*.html)</source>
+        <translation> TEXT (*.txt);; Doc (*.doc);; Xls (*.xls);; Html (*.html) </translation>
+    </message>
+</context>
+<context>
+    <name>ExportDlg</name>
+    <message>
+        <source>Exporting...</source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+</context>
+<context>
+    <name>ExportMessage</name>
+    <message>
+        <source>Export successful</source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Export failed</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+<context>
+    <name>File</name>
+    <message>
+        <source>Export File</source>
+        <translation>ملف التصدير</translation>
+    </message>
+</context>
+<context>
+    <name>Label</name>
+    <message>
+        <source>Period:</source>
+        <translation>الفترة :</translation>
+    </message>
+    <message>
+        <source>Level:  </source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Application list:</source>
+        <translation>لائحة البرنامج :</translation>
+    </message>
+    <message>
+        <source>Status:</source>
+        <translation>الحالة:</translation>
+    </message>
+    <message>
+        <source>Event Type:</source>
+        <translation>نوع الحدث:</translation>
+    </message>
+    <message>
+        <source>User:</source>
+        <translation>المستعمل :</translation>
+    </message>
+    <message>
+        <source>PID:</source>
+        <translation>رقم تعريف العملية PID:</translation>
+    </message>
+    <message>
+        <source>Action:</source>
+        <translation>الإجراء:</translation>
+    </message>
+    <message>
+        <source>Username:</source>
+        <translation>اسم المستخدم:</translation>
+    </message>
+    <message>
+        <source>Boot record</source>
+        <translation>سجل الإقلاع</translation>
+    </message>
+    <message>
+        <source>Shutdown record</source>
+        <translation>سجل إيقاف التشغيل</translation>
+    </message>
+    <message>
+        <source>Login record</source>
+        <translation>سجل تسجيل الدخول</translation>
+    </message>
+</context>
+<context>
+    <name>Level</name>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+    <message>
+        <source>Debug</source>
+        <translation>التصحيح</translation>
+    </message>
+    <message>
+        <source>Info</source>
+        <translation>معلومات</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>Emergency</source>
+        <translation>طارئ</translation>
+    </message>
+    <message>
+        <source>Alert</source>
+        <translation>إنتباه</translation>
+    </message>
+    <message>
+        <source>Critical</source>
+        <translation>خطر</translation>
+    </message>
+    <message>
+        <source>Notice</source>
+        <translation>ملاحظة</translation>
+    </message>
+    <message>
+        <source>Trace</source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Super critical</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+<context>
+    <name>LogAuthThread</name>
+    <message>
+        <source>Log file is empty</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+<context>
+    <name>Main</name>
+    <message>
+        <source>Log Viewer</source>
+        <translation>عارض السجلات</translation>
+    </message>
+    <message>
+        <source>Log Viewer is a useful tool for viewing system logs.</source>
+        <translation>عارض السجلات هو أداة مفيدة لعرض سجلات النظام</translation>
+    </message>
+</context>
+<context>
+    <name>SearchBar</name>
+    <message>
+        <source>No search results</source>
+        <translation>لا يوجد نتائج لبحثك</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>بحث</translation>
+    </message>
+</context>
+<context>
+    <name>Table</name>
+    <message>
+        <source>Level</source>
+        <translation>المستوى</translation>
+    </message>
+    <message>
+        <source>Process</source>
+        <translation>معالجة</translation>
+    </message>
+    <message>
+        <source>Date and Time</source>
+        <translation>التاريخ والوقت</translation>
+    </message>
+    <message>
+        <source>Info</source>
+        <translation>معلومات</translation>
+    </message>
+    <message>
+        <source>User</source>
+        <translation>المستخدم</translation>
+    </message>
+    <message>
+        <source>PID</source>
+        <translation>رقم تعريف العملية PID:</translation>
+    </message>
+    <message>
+        <source>Source</source>
+        <translation>المصدر</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>الإجراء:</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>الحالة:</translation>
+    </message>
+    <message>
+        <source>Event Type</source>
+        <translation>نوع الحدث:</translation>
+    </message>
+    <message>
+        <source>Username</source>
+        <translation>اسم المستخدم:</translation>
+    </message>
+    <message>
+        <source>Level:</source>
+        <translation>المستوى:</translation>
+    </message>
+    <message>
+        <source>Process:</source>
+        <translation>التنفيذ:</translation>
+    </message>
+    <message>
+        <source>Date and Time:</source>
+        <translation>التاريخ والوقت</translation>
+    </message>
+    <message>
+        <source>Info:</source>
+        <translation>معلومات :</translation>
+    </message>
+    <message>
+        <source>Null</source>
+        <translation>لا شيء</translation>
+    </message>
+    <message>
+        <source>User:</source>
+        <translation>المستخدم:</translation>
+    </message>
+    <message>
+        <source>PID:</source>
+        <translation>رقم تعريف العملية PID:</translation>
+    </message>
+</context>
+<context>
+    <name>Tbble</name>
+    <message>
+        <source>Date and Time</source>
+        <translation>التاريخ والوقت</translation>
+    </message>
+</context>
+<context>
+    <name>Tree</name>
+    <message>
+        <source>System Log</source>
+        <translation>سجل النظام</translation>
+    </message>
+    <message>
+        <source>Kernel Log</source>
+        <translation>سجل النواة</translation>
+    </message>
+    <message>
+        <source>Boot Log</source>
+        <translation>سجل الإقلاع</translation>
+    </message>
+    <message>
+        <source>dpkg Log</source>
+        <translation>سجل حزم dpkg</translation>
+    </message>
+    <message>
+        <source>Kwin Log</source>
+        <translation type="unfinished"/>
+    </message>
+    <message>
+        <source>Xorg Log</source>
+        <translation>سجل Xorg</translation>
+    </message>
+    <message>
+        <source>Application Log</source>
+        <translation>سجل التطبيقات</translation>
+    </message>
+    <message>
+        <source>Boot-Shutdown Event</source>
+        <translation>أحداث الإثلاع وإيقاف التشغيل</translation>
+    </message>
+    <message>
+        <source>dnf Log</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+</TS>

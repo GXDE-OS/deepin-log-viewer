@@ -1,0 +1,67 @@
+deepin-log-viewer (6.0.7-1) unstable; urgency=medium
+
+  * update
+
+ -- Deepin Packages Builder <packages@deepin.org>  Fri, 31 Mar 2023 10:35:22 +0800
+
+deepin-log-viewer (6.0.7) unstable; urgency=medium
+
+  * Update version
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Thu, 30 Mar 2023 15:47:53 +0800
+
+deepin-log-viewer (6.0.6) unstable; urgency=medium
+
+  * Update version
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Fri, 10 Mar 2023 10:57:30 +0800
+
+deepin-log-viewer (6.0.5) unstable; urgency=medium
+
+  * Fix RPM build
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Tue, 7 Mar 2023 10:45:40 +0800
+
+deepin-log-viewer (6.0.4) unstable; urgency=medium
+
+  * Fix no help menu
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Tue, 21 Feb 2023 13:40:59 +0800
+
+deepin-log-viewer (6.0.3) unstable; urgency=medium
+
+  * Add new tag
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Thu, 16 Feb 2023 15:12:59 +0800
+
+deepin-log-viewer (6.0.2) unstable; urgency=medium
+
+  * Merge version to 6.0.2
+  * Add other log and custom log type
+
+ -- wangzhengyang <wangzhengyang@uniontech.com>  Tue, 14 Feb 2023 15:12:59 +0800
+
+deepin-log-viewer (6.0.1) unstable; urgency=medium
+
+  * Initial for Deepin V23
+
+ -- unknown <houchengqiu@uniontech.com>  Mon, 16 Jan 2023 16:57:59 +0800
+
+deepin-log-viewer (5.9.15) unstable; urgency=medium
+
+  * New version 5.9.15
+
+ -- lichunlong <lichunlong@uniontech.com>  Thu, 5 Jan 2023 17:30:00 +0800
+
+deepin-log-viewer (5.9.14) unstable; urgency=medium
+
+  * New version 5.9.14
+
+ -- lichunlong <lichunlong@uniontech.com>  Thu, 5 Jan 2023 16:00:00 +0800
+
+deepin-log-viewer (5.2.0) unstable; urgency=medium
+
+  * Initial release
+
+ -- unknown <zs@zs-PC.com>  Thu, 17 Oct 2019 16:57:59 +0800
+
