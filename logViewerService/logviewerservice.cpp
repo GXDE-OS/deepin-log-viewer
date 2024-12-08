@@ -8,6 +8,9 @@
 #include <unistd.h>
 #include <fstream>
 
+#include <polkit-qt5-1/PolkitQt1/Authority>
+using namespace PolkitQt1;
+
 #include <dgiofile.h>
 #include <dgiovolume.h>
 #include <dgiovolumemanager.h>
@@ -37,6 +40,9 @@ Q_LOGGING_CATEGORY(logService, "org.deepin.log.viewer.service", QtInfoMsg)
 
 // 读取崩溃应用maps信息最大行数
 #define COREDUMP_MAPS_MAX_LINES 200
+
+const QString s_Action_View = "com.deepin.pkexec.logViewerAuth";
+const QString s_Action_Export = "com.deepin.pkexec.logViewerAuth.exportLogs";
 
 /**
    @brief 移除路径 \a dirPath 下的文件，注意，不会递归删除文件夹
@@ -90,6 +96,8 @@ LogViewerService::LogViewerService(QObject *parent)
     m_commands.insert("journalctl_system", "journalctl -r");
     m_commands.insert("journalctl_boot", "journalctl -b -r");
     m_commands.insert("journalctl_app", "journalctl");
+
+    m_actionId = s_Action_View;
 }
 
 LogViewerService::~LogViewerService()
@@ -100,7 +108,61 @@ LogViewerService::~LogViewerService()
         }
     }
 
-   clearTempFiles();
+    clearTempFiles();
+}
+
+/*!
+ * \~chinese \brief LogViewerService::readLog 读取日志文件
+ * \~chinese \param fd 文件句柄
+ * \~chinese \return 读取的日志
+ */
+QString LogViewerService::readLog(const QDBusUnixFileDescriptor &fd)
+{
+    if(!checkAuth(s_Action_View)) {
+        return " ";
+    }
+
+    QString log("");
+    // fd转文件
+    int fdi = fd.fileDescriptor();
+    if (fdi <= 0) {
+        return log;
+    }
+
+    QFile file;
+    if (!file.open(fdi, QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open file path cache file descriptor.";
+        return log;
+    }
+
+    QTextStream in(&file);
+    QString targetFilePath = in.readAll();
+
+    if (!targetFilePath.isEmpty())
+        log = readLog(targetFilePath);
+    else
+        qWarning() << "target log file path is empty.";
+
+    file.close();
+
+    return log;
+}
+
+QByteArray LogViewerService::processCatFile(const QString &filePath)
+{
+    m_process.start("cat", QStringList() << filePath);
+    m_process.waitForFinished(-1);
+    QByteArray byte = m_process.readAllStandardOutput();
+    return byte;
+}
+
+static QByteArray processCmdWithArgs(const QString &cmdStr, const QStringList &args)
+{
+    QProcess process;
+    process.start(cmdStr, args);
+    process.waitForFinished(-1);
+    QByteArray outByte = process.readAllStandardOutput();
+    return outByte;
 }
 
 /*!
@@ -110,7 +172,7 @@ LogViewerService::~LogViewerService()
  */
 QString LogViewerService::readLog(const QString &filePath)
 {
-    if(!isValidInvoker()) {
+    if(!checkAuth(s_Action_View)) {
         return " ";
     }
 
@@ -119,72 +181,24 @@ QString LogViewerService::readLog(const QString &filePath)
     if ((!filePath.startsWith("/var/log/") &&
          !filePath.startsWith("/tmp") &&
          !filePath.startsWith("/home") &&
-         !filePath.startsWith("/root") &&
-         !filePath.startsWith("coredumpctl info") &&
-         !filePath.startsWith("coredumpctl dump") &&
-         !filePath.startsWith("readelf") &&
-         filePath != "coredump") ||
+         !filePath.startsWith("/root")) ||
          filePath.contains(".."))  {
         return " ";
     }
 
-    if (filePath == "coredump") {
-        // 通过后端服务，读取系统下所有账户的崩溃日志信息
-        m_process.start("coredumpctl", QStringList() << "list" << "--no-pager");
-        m_process.waitForFinished(-1);
+    QByteArray byte = processCatFile(filePath);
 
-        return m_process.readAllStandardOutput();
-    } else if (filePath.startsWith("coredumpctl info")) {
-        // 通过后端服务，按进程号获取崩溃信息
-        QStringList args = filePath.mid(QString("coredumpctl").count() + 1).split(' ');
-        m_process.start("coredumpctl", args);
-        m_process.waitForFinished(-1);
-
-        return m_process.readAllStandardOutput();
-    } else if (filePath.startsWith("coredumpctl dump")) {
-        // 截取对应pid的dump文件到指定目录
-        QStringList args = filePath.mid(QString("coredumpctl").count() + 1).split(' ');
-        m_process.start("coredumpctl", args);
-        m_process.waitForFinished(-1);
-
-        return m_process.readAllStandardOutput();
-    } else if (filePath.startsWith("readelf")) {
-        // 获取dump文件偏移地址信息
-        QStringList args = filePath.mid(QString("readelf").count() + 1).split(' ');
-        m_process.start("readelf", args);
-        m_process.waitForFinished(-1);
-
-        // 因原始maps信息过大，基本几百KB，埋点平台并不需要全量数据，仅取前200行maps信息即可
-        QTextStream in(m_process.readAllStandardOutput());
-        QStringList lines;
-        QString str;
-        while (!in.atEnd()) {
-            str  = in.readLine();
-
-            if (!str.isEmpty())
-                lines.push_back(str);
-            if (lines.count() >= COREDUMP_MAPS_MAX_LINES)
-                break;
+    //QByteArray -> QString 如果遇到0x00，会导致转换终止
+    //replace("\x00", "")和replace("\u0000", "")无效
+    //使用remove操作，性能损耗过大，因此遇到0x00 替换为 0x20(空格符)
+    int replaceTimes = 0;
+    for (int i = 0; i != byte.size(); ++i) {
+        if (byte.at(i) == 0x00) {
+            byte[i] = 0x20;
+            replaceTimes++;
         }
-
-        return lines.join('\n').toUtf8();
-    } else {
-        m_process.start("cat", QStringList() << filePath);
-        m_process.waitForFinished(-1);
-        QByteArray byte = m_process.readAllStandardOutput();
-
-        //QByteArray -> QString 如果遇到0x00，会导致转换终止
-        //replace("\x00", "")和replace("\u0000", "")无效
-        //使用remove操作，性能损耗过大，因此遇到0x00 替换为 0x20(空格符)
-        int replaceTimes = 0;
-        for (int i = 0; i != byte.size(); ++i) {
-            if (byte.at(i) == 0x00) {
-                byte[i] = 0x20;
-                replaceTimes++;
-            }
-        }
-        return QString::fromUtf8(byte);
     }
+    return QString::fromUtf8(byte);
 }
 
 qint64 LogViewerService::readFileAndReturnIndex(const QString &filePath, qint64 startLine, QList<uint64_t>& lineIndexes, bool reverseOrder) {
@@ -243,11 +257,72 @@ qint64 LogViewerService::readFileAndReturnIndex(const QString &filePath, qint64 
     return lineIndexes.at(startLine); // 返回给定起始行的索引
 }
 
+/**
+   @brief Polkit action authorization check.
+        Use com.deepin.pkexec.logViewerAuth.policy config file.
+        Default action id: "com.deepin.pkexec.logViewerAuth"
+   @note Available on linux/unix/macos platform.
+   @return check passed.
+ */
+bool LogViewerService::checkAuthorization(const QString &actionId, qint64 applicationPid)
+{
+#if defined (Q_OS_LINUX) || defined (Q_OS_UNIX) ||  defined (Q_OS_MAC)
+            PolkitQt1::Authority::Result ret = PolkitQt1::Authority::instance()->checkAuthorizationSync(
+                actionId, PolkitQt1::UnixProcessSubject(applicationPid), PolkitQt1::Authority::AllowUserInteraction);
+    if (PolkitQt1::Authority::Yes == ret) {
+        return true;
+    } else {
+        qWarning() << qPrintable("Policy authorization check failed!");
+        return false;
+    }
+#else
+    return true;
+#endif
+}
+
+/*!
+ * \~chinese \brief LogViewerService::readLogLinesInRange 分段读取日志文件
+ * \~chinese \param fd 文件句柄
+ * \~chinese \return 读取的日志
+ */
+QStringList LogViewerService::readLogLinesInRange(const QDBusUnixFileDescriptor &fd, qint64 startLine, qint64 lineCount, bool bReverse)
+{
+    if(!checkAuth(s_Action_View)) {
+        return QStringList();
+    }
+
+    QStringList lines;
+    // fd转文件
+    int fdi = fd.fileDescriptor();
+    if (fdi <= 0) {
+        return lines;
+    }
+
+    QFile file;
+    if (!file.open(fdi, QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open file path cache file descriptor.";
+        return lines;
+    }
+
+    QTextStream in(&file);
+    QString targetFilePath = in.readAll();
+
+    if (!targetFilePath.isEmpty())
+        lines = readLogLinesInRange(targetFilePath, startLine, lineCount, bReverse);
+    else
+        qWarning() << "target log file path is empty.";
+
+    file.close();
+
+    return lines;
+}
+
 QStringList LogViewerService::readLogLinesInRange(const QString &filePath, qint64 startLine, qint64 lineCount, bool bReverse)
 {
     QStringList lines;
 
-    if (!isValidInvoker())
+    // 开启鉴权
+    if (!checkAuth(s_Action_View))
         return lines;
 
     //增加服务黑名单，只允许通过提权接口读取/var/log下，家目录下和临时目录下的文件
@@ -256,7 +331,7 @@ QStringList LogViewerService::readLogLinesInRange(const QString &filePath, qint6
          !filePath.startsWith("/tmp") &&
          !filePath.startsWith("/home") &&
          !filePath.startsWith("/root")) ||
-            filePath.contains("..")) {
+         filePath.contains("..")) {
         return lines;
     }
 
@@ -355,8 +430,8 @@ qint64 LogViewerService::findLineStartOffsetWithCaching(const QString &filePath,
     return -1; // 没有找到目标行
 }
 
-qint64 LogViewerService::getLineCount(const QString &filePath) {
-
+qint64 LogViewerService::getLineCount(const QString &filePath)
+{
     if (!isValidInvoker())
         return -1;
 
@@ -376,16 +451,18 @@ qint64 LogViewerService::getLineCount(const QString &filePath) {
         return -1;
     }
 
-    m_process.start("wc", QStringList() << "-l" << filePath);
-    m_process.waitForFinished(-1);
-
     qint64 lineCount = -1;
-    QString result = m_process.readAllStandardOutput();
+    QString result = processCmdWithArgs("wc", QStringList() << "-l" << filePath);
     QStringList splitResult = result.split(' ');
     if (splitResult.size() > 0)
         lineCount = splitResult.first().toLongLong();
 
     return lineCount;
+}
+
+void LogViewerService::processCmdArgs(const QString &cmdStr, const QStringList &args)
+{
+    m_process.start(cmdStr, args);
 }
 
 QString LogViewerService::executeCmd(const QString &cmd)
@@ -397,25 +474,60 @@ QString LogViewerService::executeCmd(const QString &cmd)
 
     QString cmdStr;
     QStringList args;
-    if (cmd == "coredumpctl-list-count") {
-        cmdStr = "/bin/bash";
-        args << "-c";
-        args << "coredumpctl list | wc -l | awk '{print $1-1}'";
-    }
-    else if (cmd == "coredumpctl-list") {
+    if (cmd.startsWith("coredumpctl-list")) {
+        // 通过后端服务，读取系统下所有账户的崩溃日志信息
         cmdStr = "coredumpctl";
-        args << "list";
+        args << "list" << "--no-pager";
+    } else if (cmd.startsWith("coredumpctl info")) {
+        // 通过后端服务，按进程号获取崩溃信息
+        cmdStr = "coredumpctl";
+        args = cmd.mid(QString("coredumpctl").count() + 1).split(' ');
+    } else if (cmd.startsWith("coredumpctl dump")) {
+        // 截取对应pid的dump文件到指定目录
+        cmdStr = "coredumpctl";
+        args = cmd.mid(QString("coredumpctl").count() + 1).split(' ');
+    } else if (cmd.startsWith("readelf")) {
+        // 获取dump文件偏移地址信息
+        cmdStr = "readelf";
+        args = cmd.mid(QString("readelf").count() + 1).split(' ');
     }
 
     if (!cmdStr.isEmpty()) {
-        m_process.start(cmdStr, args);
+        processCmdArgs(cmdStr, args);
 
         if (!m_process.waitForFinished(-1)) {
             qCWarning(logService()) << "invalid command:" << QString("%1 %2").arg(cmdStr).arg(args.join(' '));
             return "";
         }
 
-        result = m_process.readAllStandardOutput();
+        if (cmd == "coredumpctl-list-count") {
+            result = m_process.readAllStandardOutput();
+            QStringList rows = result.split('\n');
+            int nCnt = rows.size();
+            // 去掉表头和表尾行
+            if (nCnt > 2)
+                nCnt -= 2;
+            else
+                nCnt = 0;
+            result = QString::number(nCnt);
+        } else if (cmd.startsWith("readelf")) {
+            // 因原始maps信息过大，基本几百KB，埋点平台并不需要全量数据，仅取前200行maps信息即可
+            QTextStream in(m_process.readAllStandardOutput());
+            QStringList lines;
+            QString str;
+            while (!in.atEnd()) {
+                str  = in.readLine();
+
+                if (!str.isEmpty())
+                    lines.push_back(str);
+                if (lines.count() >= COREDUMP_MAPS_MAX_LINES)
+                    break;
+            }
+
+            result = lines.join('\n').toUtf8();
+        } else {
+            result = m_process.readAllStandardOutput();
+        }
     }
 
     return result;
@@ -479,10 +591,15 @@ QString LogViewerService::readLogInStream(const QString &token)
     return result;
 }
 
-bool LogViewerService::isFileExist(const QString &filePath)
+QString LogViewerService::isFileExist(const QString &filePath)
 {
-    QFile file(filePath);
-    return file.exists();
+    if (!checkAuth(s_Action_View))
+        return QString("");
+
+    if (QFile::exists(filePath))
+        return QString("exist");
+
+    return QString("");
 }
 
 quint64 LogViewerService::getFileSize(const QString &filePath)
@@ -617,10 +734,10 @@ QStringList LogViewerService::getFileInfo(const QString &file, bool unzip)
     }
 
     if (tmpDir.isValid()) {
-        tmpDirPath = tmpDir.path();
+        m_tmpDirPath = tmpDir.path();
         // 每次解压前移除旧有的文件
         if (unzip) {
-            removeDirFiles(tmpDirPath);
+            removeDirFiles(m_tmpDirPath);
         }
     }
 
@@ -652,10 +769,7 @@ QStringList LogViewerService::getFileInfo(const QString &file, bool unzip)
         dir.setPath("/var/log/audit");
         nameFilter = file;
     } else if (file == "coredump") {
-        QProcess process;
-        process.start("coredumpctl", QStringList() << "list");
-        process.waitForFinished(-1);
-        QByteArray outByte = process.readAllStandardOutput();
+        QByteArray outByte = processCmdWithArgs("coredumpctl", QStringList() << "list");
         QStringList strList = QString(outByte.replace('\u0000', "").replace("\x01", "")).split('\n', QString::SkipEmptyParts);
 
         QRegExp re("(Storage: )\\S+");
@@ -673,9 +787,7 @@ QStringList LogViewerService::getFileInfo(const QString &file, bool unzip)
             QString storagePath = "";
             // 解析coredump文件保存位置
             if (coreFile != "missing") {
-                process.start("coredumpctl", QStringList() << "info" << pid);
-                process.waitForFinished(-1);
-                QByteArray outInfoByte = process.readAllStandardOutput();
+                QByteArray outInfoByte = processCmdWithArgs("coredumpctl", QStringList() << "info" << pid);
                 re.indexIn(outInfoByte);
                 storagePath = re.cap(0).replace("Storage: ", "");
             }
@@ -700,7 +812,7 @@ QStringList LogViewerService::getFileInfo(const QString &file, bool unzip)
     dir.setNameFilters(QStringList() << nameFilter + ".*"); //设置过滤
     dir.setSorting(QDir::Time);
     QFileInfoList fileList = dir.entryInfoList();
-    QString tempFileTemplate = tmpDirPath + QDir::separator() + "Log_extract_XXXXXX.txt";
+    QString tempFileTemplate = m_tmpDirPath + QDir::separator() + "Log_extract_XXXXXX.txt";
 
     for (int i = 0; i < fileList.count(); i++) {
         if (QString::compare(fileList[i].suffix(), "gz", Qt::CaseInsensitive) == 0 && unzip) {
@@ -729,10 +841,10 @@ QStringList LogViewerService::getOtherFileInfo(const QString &file, bool unzip)
     }
 
     if (tmpDir.isValid()) {
-        tmpDirPath = tmpDir.path();
+        m_tmpDirPath = tmpDir.path();
         // 每次解压前移除旧有的文件
         if (unzip) {
-            removeDirFiles(tmpDirPath);
+            removeDirFiles(m_tmpDirPath);
         }
     }
 
@@ -760,7 +872,7 @@ QStringList LogViewerService::getOtherFileInfo(const QString &file, bool unzip)
     dir.setFilter(QDir::Files | QDir::NoSymLinks | QDir::Hidden); //实现对文件的过滤
     dir.setSorting(QDir::Time);
     fileList = dir.entryInfoList();
-    QString tempFileTemplate = tmpDirPath + QDir::separator() + "Log_extract_XXXXXX.txt";
+    QString tempFileTemplate = m_tmpDirPath + QDir::separator() + "Log_extract_XXXXXX.txt";
 
     for (int i = 0; i < fileList.count(); i++) {
         if (QString::compare(fileList[i].suffix(), "gz", Qt::CaseInsensitive) == 0 && unzip) {
@@ -776,9 +888,23 @@ QStringList LogViewerService::getOtherFileInfo(const QString &file, bool unzip)
     return fileNamePath;
 }
 
+static bool processExportLog(const QString &cmdStr, const QString &outFullPath,const QStringList &args)
+{
+    QProcess process;
+    if (cmdStr != "cp") {
+        process.setStandardOutputFile(outFullPath, QIODevice::WriteOnly);
+    }
+
+    process.start(cmdStr, args);
+    if (!process.waitForFinished(-1)) {
+        return false;
+    }
+    return true;
+}
+
 bool LogViewerService::exportLog(const QString &outDir, const QString &in, bool isFile)
 {
-    if(!isValidInvoker()) { //非法调用
+    if(!checkAuth(s_Action_Export)) { //非法调用
         return false;
     }
 
@@ -876,38 +1002,40 @@ bool LogViewerService::exportLog(const QString &outDir, const QString &in, bool 
             return false;
         }
 
-        cmdExec = QString("%1 >& \"%2\";").arg(cmd, outFullPath);
+        cmdExec = cmd;
     }
 
     QString cmdStr = cmdExec.mid(0, cmdExec.indexOf(' '));
-    QProcess process;
-    if (cmdStr == "cp") {
-        QStringList args;
-        args << cmdExec.mid(cmdExec.indexOf(' ') + 1).split(' ');
-        process.start(cmdStr, args);
-    } else {
-        process.start("/bin/bash", QStringList() << "-c" << cmdExec);
+    QStringList args;
+    args << cmdExec.mid(cmdExec.indexOf(' ') + 1).split(' ');
+
+    if (cmdStr != "cp") {
+        if (!QFile::exists(outFullPath)) {
+            qInfo() << "outFullPath:" << outFullPath << "not exist;";
+            QFile file(outFullPath);
+        }
     }
 
-    if (!process.waitForFinished(-1)) {
+    if (!processExportLog(cmdStr,outFullPath, args)) {
         qCWarning(logService) << "command error:" << cmdExec;
         return false;
     }
 
     //设置文件权限
-    process.start("chmod", QStringList() << "777" << outFullPath);
-    if (!process.waitForFinished()) {
+    QProcess newProcess;
+    newProcess.start("chmod", QStringList() << "777" << outFullPath);
+    if (!newProcess.waitForFinished()) {
         qCWarning(logService) << QString("chmod 777 %1 failed.").arg(outFullPath);
         return false;
     }
     return true;
 }
 
-bool LogViewerService::isValidInvoker()
+bool LogViewerService::isValidInvoker(bool checkAuth/* = true*/)
 {
-    if (!calledFromDBus()) {
-        return false;
-    }
+   if (!calledFromDBus()) {
+       return false;
+   }
 
     bool valid = false;
     QDBusConnection conn = connection();
@@ -915,6 +1043,52 @@ bool LogViewerService::isValidInvoker()
 
     //判断是否存在执行路径
     uint pid = conn.interface()->servicePid(msg.service()).value();
+
+    // 判断是否存在执行路径且是否存在于可调用者名单中
+    QFile initNsMntFile("/proc/1/ns/mnt");
+    QFile senderNsMntFile(QString("/proc/%1/ns/mnt").arg(pid));
+    auto initNsMnt = initNsMntFile.readLink().trimmed().remove(0, QString("/proc/1/ns/mnt").length());
+    auto senderNsMnt = senderNsMntFile.readLink().trimmed().remove(0, QString("/proc/%1/ns/mnt").arg(pid).length());
+    if (initNsMnt != senderNsMnt) {
+        sendErrorReply(QDBusError::ErrorType::Failed, "Illegal calls！！！！！");
+        return false;
+    }
+
+    //进制使用环境变量导入.so动态调用dbus接口
+    QProcess proc;
+    proc.start(QString("cat /proc/%1/maps").arg(pid));
+    proc.waitForStarted();
+    proc.waitForFinished();
+    QString maps = QString::fromLocal8Bit(proc.readAllStandardOutput()).trimmed();
+    proc.close();
+    QStringList libMaps = maps.split("\n", QString::SkipEmptyParts);
+    QStringList allParts;
+    for (const QString &part : libMaps) {
+        QStringList subParts = part.split(' ');
+        for (const QString &subPart : subParts) {
+            if (!subPart.isEmpty()) {
+                allParts.append(subPart);
+            }
+        }
+    }
+    for (int j = 0; j < allParts.count(); ++j) {
+        QString libStr = allParts.at(j);
+        QFileInfo info(libStr);
+        if (info.isFile()) {
+            QString fileName = info.fileName();
+            if (fileName.contains(".so")) {
+                QStringList libpath = libStr.split("/", QString::SkipEmptyParts);
+                if (libpath.count() > 2) {
+                    QString libhead = QString("/%1/%2").arg(libpath.at(0)).arg(libpath.at(1));
+                    if (libhead != "/usr/lib") {
+                        sendErrorReply(QDBusError::ErrorType::Failed, "Illegal calls！！！！！");
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
     QFileInfo f(QString("/proc/%1/exe").arg(pid));
     if (!f.exists()) {
         valid = false;
@@ -932,28 +1106,53 @@ bool LogViewerService::isValidInvoker()
     if (valid)
         valid = ValidInvokerExePathList.contains(invokerPath);
 
-    // mnt判断
-    if (valid) {
-        QProcess process;
-        process.start("readlink", QStringList() << QString("/proc/%1/ns/mnt").arg(pid));
-        process.waitForFinished(-1);
-        QString appMnt = process.readAllStandardOutput();
-        process.start("readlink", QStringList() << QString("/proc/1/ns/mnt"));
-        process.waitForFinished(-1);
-        QString selfMnt = process.readAllStandardOutput();
-        valid = !selfMnt.isEmpty() && (selfMnt == appMnt);
-        if (!valid) {
-            qWarning() << QString("appMnt:%1 is not same as selfMnt:%2.").arg(appMnt).arg(selfMnt);
+    // pokit前端进程鉴权
+    bool bAuthValid = true;
+    QString strCheckAuthTip;
+    if (valid && checkAuth) {
+        bAuthValid = checkAuthorization(m_actionId, pid);
+        valid = bAuthValid;
+        if (!bAuthValid) {
+            strCheckAuthTip = "checkAuthorization failed.";
+            qWarning() << strCheckAuthTip;
         }
     }
-
     //非法调用
     if (!valid) {
         sendErrorReply(QDBusError::ErrorType::Failed,
-                       QString("(pid: %1)[%2] is not allowed to configrate firewall")
+                       QString("(pid: %1)[%2] is not allowed to configrate firewall. %3")
                        .arg(pid)
-                       .arg((invokerPath)));
+                       .arg((invokerPath))
+                       .arg(strCheckAuthTip));
         return false;
     }
     return true;
+}
+
+bool LogViewerService::checkAuth(const QString &actionId)
+{
+    if (!calledFromDBus()) {
+        qWarning() << "called not from dbus.";
+        return false;
+    }
+
+    bool isRoot = connection().interface()->serviceUid(message().service()).value() == 0;
+    if (isRoot) {
+        qInfo() << "dbus caller is root progress.";
+        return  true;
+    }
+
+    uint pid = connection().interface()->servicePid(message().service()).value();
+
+    bool bAuthVaild = false;
+    bAuthVaild = checkAuthorization(actionId, pid);
+    if (!bAuthVaild) {
+        qWarning() << "checkAuthorization failed.";
+        sendErrorReply(QDBusError::ErrorType::Failed,
+                       QString("(pid: %1) is not allowed to configrate firewall. %3")
+                       .arg(pid)
+                       .arg("checkAuthorization failed."));
+    }
+
+    return  bAuthVaild;
 }

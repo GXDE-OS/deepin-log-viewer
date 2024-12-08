@@ -474,16 +474,13 @@ void Utils::resetToNormalAuth(const QString &path)
     QFileInfo fi(path);
     if (!path.isEmpty() && fi.exists()) {
         qInfo() << "resetToNormalAuth: " << path;
-        QProcess procss;
+        QString tmpPath = path;
         if (fi.isDir())
-            procss.setWorkingDirectory(path);
+            tmpPath = path;
         else
-            procss.setWorkingDirectory(fi.absolutePath());
+            tmpPath = fi.absolutePath();
 
-        QStringList arg = {"-c"};
-        arg.append(QString("chmod -R 777 '%1'").arg(path));
-        procss.start("/bin/bash", arg);
-        procss.waitForFinished(-1);
+        executeCmd("chmod", QStringList() << "-R" << "777" << tmpPath);
     }
 }
 
@@ -589,6 +586,33 @@ void Utils::updateRepeatCoredumpExePaths(const QList<LOG_REPEAT_COREDUMP_INFO> &
     out << curReaptExePaths.join(' ');
 
     file.close();
+}
+
+static QByteArray processCmdWithArgs(const QString &cmdStr, const QString &workPath, const QStringList &args)
+{
+    QProcess process;
+    if (!workPath.isEmpty())
+        process.setWorkingDirectory(workPath);
+
+    process.setProgram(cmdStr);
+    process.setArguments(args);
+    process.setEnvironment({"LANG=en_US.UTF-8", "LANGUAGE=en_US"});
+    process.start();
+    // Wait for process to finish without timeout.
+    process.waitForFinished(-1);
+    QByteArray outPut = process.readAllStandardOutput();
+    int nExitCode = process.exitCode();
+    bool bRet = (process.exitStatus() == QProcess::NormalExit && nExitCode == 0);
+    if (!bRet) {
+        qDebug() << "run cmd error, caused by:" << process.errorString() << "output:" << outPut;
+        return QByteArray();
+    }
+    return outPut;
+}
+
+QByteArray Utils::executeCmd(const QString &cmdStr, const QStringList &args, const QString &workPath)
+{
+    return processCmdWithArgs(cmdStr, workPath,  args);
 }
 
 #ifdef DTKCORE_CLASS_DConfigFile

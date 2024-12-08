@@ -12,6 +12,7 @@
 #include <QScopedPointer>
 #include <QProcess>
 #include <QTemporaryDir>
+#include <QDBusUnixFileDescriptor>
 
 class QTextStream;
 class DGioVolumeManager;
@@ -27,9 +28,9 @@ public:
 Q_SIGNALS:
 
 public Q_SLOTS:
-    Q_SCRIPTABLE QString readLog(const QString &filePath);
+    Q_SCRIPTABLE QString readLog(const QDBusUnixFileDescriptor &fd);
     // 获取指定行数范围的日志内容
-    Q_SCRIPTABLE QStringList readLogLinesInRange(const QString &filePath, qint64 startLine, qint64 lineCount, bool bReverse);
+    Q_SCRIPTABLE QStringList readLogLinesInRange(const QDBusUnixFileDescriptor &fd, qint64 startLine, qint64 lineCount, bool bReverse);
     Q_SCRIPTABLE int exitCode();
     Q_SCRIPTABLE void quit();
     Q_SCRIPTABLE QStringList getFileInfo(const QString &file, bool unzip = true);
@@ -37,7 +38,7 @@ public Q_SLOTS:
     Q_SCRIPTABLE bool exportLog(const QString &outDir, const QString &in, bool isFile);
     Q_SCRIPTABLE QString openLogStream(const QString &filePath);
     Q_SCRIPTABLE QString readLogInStream(const QString &token);
-    Q_SCRIPTABLE bool isFileExist(const QString &filePath);
+    Q_SCRIPTABLE QString isFileExist(const QString &filePath);
     Q_SCRIPTABLE quint64 getFileSize(const QString &filePath);
     Q_SCRIPTABLE qint64 getLineCount(const QString &filePath);
     // 仅能执行特定合法命令
@@ -52,6 +53,8 @@ public:
     QList<QExplicitlySharedDataPointer<DGioMount>> getMounts_safe();
 
 private:
+    QString readLog(const QString &filePath);
+    Q_SCRIPTABLE QStringList readLogLinesInRange(const QString &filePath, qint64 startLine, qint64 lineCount, bool bReverse);
     // 清理临时目录下一些缓存文件，如解压后dump文件等（前端可能没权限删除，因此统一放到后端清理）
     void clearTempFiles();
 
@@ -61,9 +64,12 @@ private:
     qint64 readFileAndReturnIndex(const QString &filePath, qint64 startLine, QList<uint64_t>& lineIndexes, bool reverseOrder);
 
 private:
+    bool checkAuthorization(const QString &actionId, qint64 applicationPid);
+private:
     QTemporaryDir tmpDir;
     QProcess m_process;
-    QString tmpDirPath;
+    QString m_tmpDirPath;
+    QString m_actionId;
     QMap<QString, QString> m_commands;
     QMap<QString, std::pair<QString, QTextStream*>> m_logMap;
     QMap<QString, QList<uint64_t>> m_logLineIndex;
@@ -71,7 +77,10 @@ private:
      * @brief isValidInvoker 检验调研者是否是日志
      * @return
      */
-    bool isValidInvoker();
+    bool isValidInvoker(bool checkAuth = false);
+    bool checkAuth(const QString &actionId);
+    QByteArray processCatFile(const QString &filePath);
+    void processCmdArgs(const QString &cmdStr, const QStringList &args);
 };
 
 #endif // LOGVIEWERSERVICE_H

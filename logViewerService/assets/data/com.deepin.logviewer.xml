@@ -3,11 +3,11 @@
   <interface name="com.deepin.logviewer">
     <method name="readLog">
       <arg type="s" direction="out"/>
-      <arg name="filePath" type="s" direction="in"/>
+      <arg name="fd" type="i" direction="in"/>
     </method>
     <method name="readLogLinesInRange">
       <arg type="as" direction="out"/>
-      <arg name="filePath" type="s" direction="in"/>
+      <arg name="fd" type="i" direction="in"/>
       <arg name="startLine" type="x" direction="in"/>
       <arg name="lineCount" type="x" direction="in"/>
     </method>
@@ -36,7 +36,7 @@
       <arg name="token" type="s" direction="in"/>
     </method>
     <method name="isFileExist"> 
-      <arg type="b" direction="out"/>
+      <arg type="s" direction="out"/>
       <arg name="filePath" type="s" direction="in"/>
     </method>
     <method name="getFileSize"> 

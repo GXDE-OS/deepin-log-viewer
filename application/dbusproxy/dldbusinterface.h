@@ -71,11 +71,25 @@ public Q_SLOTS: // METHODS
         return asyncCallWithArgumentList(QStringLiteral("quit"), argumentList);
     }
 
+    inline QDBusPendingReply<QString> readLog(const QDBusUnixFileDescriptor &fd)
+    {
+        QList<QVariant> argumentList;
+        argumentList << QVariant::fromValue(fd);
+        return asyncCallWithArgumentList(QStringLiteral("readLog"), argumentList);
+    }
+
     inline QDBusPendingReply<QString> readLog(const QString &filePath)
     {
         QList<QVariant> argumentList;
         argumentList << QVariant::fromValue(filePath);
         return asyncCallWithArgumentList(QStringLiteral("readLog"), argumentList);
+    }
+
+    inline QDBusPendingReply<QStringList> readLogLinesInRange(const QDBusUnixFileDescriptor &fd, qint64 startLine, qint64 lineCount, bool bReverse)
+    {
+        QList<QVariant> argumentList;
+        argumentList << QVariant::fromValue(fd) << QVariant::fromValue(startLine) << QVariant::fromValue(lineCount) << QVariant::fromValue(bReverse);
+        return asyncCallWithArgumentList(QStringLiteral("readLogLinesInRange"), argumentList);
     }
 
     inline QDBusPendingReply<QStringList> readLogLinesInRange(const QString &filePath, qint64 startLine, qint64 lineCount, bool bReverse)
@@ -99,7 +113,7 @@ public Q_SLOTS: // METHODS
         return asyncCallWithArgumentList(QStringLiteral("readLogInStream"), argumentList);
     }
 
-    inline QDBusPendingReply<bool> isFileExist(const QString &filePath)
+    inline QDBusPendingReply<QString> isFileExist(const QString &filePath)
     {
         QList<QVariant> argumentList;
         argumentList << QVariant::fromValue(filePath);

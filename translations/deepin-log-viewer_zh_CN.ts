@@ -1,4 +1,6 @@
-<?xml version="1.0" ?><!DOCTYPE TS><TS version="2.1" language="zh_CN">
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="zh_CN">
 <context>
     <name>Action</name>
     <message>
@@ -145,7 +147,7 @@
     <name>DisplayContent</name>
     <message>
         <source>zip(*.zip)</source>
-        <translation type="unfinished"/>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>TEXT (*.txt);; Doc (*.doc);; Xls (*.xls);; Html (*.html)</source>
@@ -416,7 +418,7 @@
     </message>
     <message>
         <source>Offset</source>
-        <translation>进程</translation>
+        <translation>偏移量</translation>
     </message>
 </context>
 <context>
@@ -499,6 +501,10 @@
  audit only administrators can view the audit log</source>
         <translation>当前系统安全等级为：高
 仅审计管理员可查看审计日志</translation>
+    </message>
+    <message>
+        <source>Audit log is not exist.</source>
+        <translation>审计日志不存在。</translation>
     </message>
 </context>
 <context>
