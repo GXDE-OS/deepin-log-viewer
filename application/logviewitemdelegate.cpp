@@ -5,7 +5,7 @@
 #include "logviewitemdelegate.h"
 
 #include <DApplication>
-#include <DApplicationHelper>
+#include <DGuiApplicationHelper>
 #include <DPalette>
 #include <DStyle>
 #include <DStyleHelper>
@@ -27,6 +27,7 @@ DWIDGET_USE_NAMESPACE
 LogViewItemDelegate::LogViewItemDelegate(QObject *parent)
     : QStyledItemDelegate(parent)
 {
+    qDebug() << "LogViewItemDelegate initialized";
 }
 /**
  * @brief LogViewItemDelegate::paint 绘制内容数据和文字虚函数
@@ -38,6 +39,7 @@ void LogViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
                                 const QModelIndex &index) const
 {
     if (!index.isValid()) {
+        qDebug() << "Invalid index, using default paint";
         QStyledItemDelegate::paint(painter, option, index);
         return;
     }
@@ -63,7 +65,7 @@ void LogViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     DStyle *style = dynamic_cast<DStyle *>(DApplication::style());
     int margin = style->pixelMetric(DStyle::PM_ContentsMargins, &option);
     //设置高亮文字色
-    DApplicationHelper *dAppHelper = DApplicationHelper::instance();
+    DGuiApplicationHelper *dAppHelper = DGuiApplicationHelper::instance();
     DPalette palette = dAppHelper->applicationPalette();
     QPen forground;
     forground.setColor(palette.color(cg, DPalette::Text));
@@ -123,6 +125,7 @@ void LogViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
 QSize LogViewItemDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const
 {
+    qDebug() << "Calculating size hint for row:" << index.row();
     QSize size = QStyledItemDelegate::sizeHint(option, index);
     int nRowHeight = ROW_HEIGHT;
 #ifdef DTKWIDGET_CLASS_DSizeMode
@@ -144,6 +147,7 @@ QSize LogViewItemDelegate::sizeHint(const QStyleOptionViewItem &option,
 void LogViewItemDelegate::initStyleOption(QStyleOptionViewItem *option,
                                           const QModelIndex &index) const
 {
+    qDebug() << "Initializing style options for row:" << index.row();
     option->showDecorationSelected = true;
     bool ok = false;
     if (index.data(Qt::TextAlignmentRole).isValid()) {

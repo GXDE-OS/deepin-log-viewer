@@ -13,7 +13,8 @@
 #include "parsethread/parsethreadbase.h"
 
 #include <DApplication>
-#include <DApplicationHelper>
+#include <DGuiApplicationHelper>
+#include <DPaletteHelper>
 #include <DFileDialog>
 #include <DFontSizeManager>
 #include <DHorizontalLine>
@@ -45,11 +46,7 @@
 #include "malloc.h"
 DWIDGET_USE_NAMESPACE
 
-#ifdef QT_DEBUG
-Q_LOGGING_CATEGORY(logDisplaycontent, "org.deepin.log.viewer.display.content")
-#else
-Q_LOGGING_CATEGORY(logDisplaycontent, "org.deepin.log.viewer.display.content", QtInfoMsg)
-#endif
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 #define SINGLE_LOAD 300
 
@@ -65,13 +62,20 @@ Q_LOGGING_CATEGORY(logDisplaycontent, "org.deepin.log.viewer.display.content", Q
  */
 DisplayContent::DisplayContent(QWidget *parent)
     : DWidget(parent)
-
 {
+    qCDebug(logApp) << "DisplayContent constructor start";
     m_pLogBackend = LogBackend::instance(this);
+    qCDebug(logApp) << "LogBackend instance created";
 
     initUI();
+    qCDebug(logApp) << "UI initialized";
+    
     initMap();
+    qCDebug(logApp) << "Translation maps initialized";
+    
     initConnections();
+    
+    qCDebug(logApp) << "DisplayContent constructor end";
 }
 
 /**
@@ -79,7 +83,10 @@ DisplayContent::DisplayContent(QWidget *parent)
  */
 DisplayContent::~DisplayContent()
 {
+    qCDebug(logApp) << "DisplayContent destructor start";
     malloc_trim(0);
+    qCDebug(logApp) << "Memory trimmed";
+    qCDebug(logApp) << "DisplayContent destructor end";
 }
 /**
  * @brief DisplayContent::mainLogTableView  返回主表控件指针给外部调用
@@ -87,6 +94,7 @@ DisplayContent::~DisplayContent()
  */
 LogTreeView *DisplayContent::mainLogTableView()
 {
+    // qCDebug(logApp) << "DisplayContent::mainLogTableView called";
     return m_treeView;
 }
 
@@ -95,6 +103,7 @@ LogTreeView *DisplayContent::mainLogTableView()
  */
 void DisplayContent::initUI()
 {
+    qCDebug(logApp) << "Initialize UI components start";
     // set table for display log data
     initTableView();
     m_treeView->setMinimumHeight(100);
@@ -102,28 +111,28 @@ void DisplayContent::initUI()
 
     //noResultLabel
     noResultLabel = new DLabel(this);
-    DPalette pa = DApplicationHelper::instance()->palette(noResultLabel);
+    DPalette pa = DPaletteHelper::instance()->palette(noResultLabel);
     pa.setBrush(DPalette::WindowText, pa.color(DPalette::TextTips));
-    DApplicationHelper::instance()->setPalette(noResultLabel, pa);
+    noResultLabel->setPalette(pa);
     noResultLabel->setText(DApplication::translate("SearchBar", "No search results"));
     DFontSizeManager::instance()->bind(noResultLabel, DFontSizeManager::T4);
     noResultLabel->setAlignment(Qt::AlignCenter);
 
     //notAuditLabel
     notAuditLabel = new DLabel(this);
-    DApplicationHelper::instance()->setPalette(notAuditLabel, pa);
+    notAuditLabel->setPalette(pa);
     notAuditLabel->setText(DApplication::translate("Warning", "Security level for the current system: high\n audit only administrators can view the audit log"));
     DFontSizeManager::instance()->bind(notAuditLabel, DFontSizeManager::T4);
     notAuditLabel->setAlignment(Qt::AlignCenter);
 
     noCoredumpctlLabel = new DLabel(this);
-    DApplicationHelper::instance()->setPalette(noCoredumpctlLabel, pa);
+    noCoredumpctlLabel->setPalette(pa);
     noCoredumpctlLabel->setText(DApplication::translate("Waring", "Unable to obtain crash information, please install systemd-coredump."));
     DFontSizeManager::instance()->bind(noCoredumpctlLabel, DFontSizeManager::T4);
     noCoredumpctlLabel->setAlignment(Qt::AlignCenter);
 
     noPermissionLabel = new DLabel(this);
-    DApplicationHelper::instance()->setPalette(noPermissionLabel, pa);
+    noPermissionLabel->setPalette(pa);
     noPermissionLabel->setText(DApplication::translate("Warning", "You do not have permission to view it"));
     DFontSizeManager::instance()->bind(noPermissionLabel, DFontSizeManager::T4);
     noPermissionLabel->setAlignment(Qt::AlignCenter);
@@ -185,6 +194,7 @@ void DisplayContent::initUI()
  */
 void DisplayContent::initMap()
 {
+    qCDebug(logApp) << "DisplayContent::initMap called";
     m_transDict.clear();
     m_transDict.insert("Warning", DApplication::translate("Level", "Warning")); //add by Airy for bug 19167 and 19161
     m_transDict.insert("Debug", DApplication::translate("Level", "Debug")); //add by Airy for bug 19167 and 19161
@@ -219,6 +229,7 @@ void DisplayContent::initMap()
  */
 void DisplayContent::initTableView()
 {
+    qCDebug(logApp) << "DisplayContent::initTableView called";
     m_treeView = new LogTreeView(this);
     m_treeView->setObjectName("mainLogTable");
     m_treeView->setAccessibleName("mainLogTable");
@@ -232,6 +243,8 @@ void DisplayContent::initTableView()
  */
 void DisplayContent::initConnections()
 {
+    qCDebug(logApp) << "Initialize signal-slot connections start";
+
     connect(m_treeView, SIGNAL(pressed(const QModelIndex &)), this,
             SLOT(slot_tableItemClicked(const QModelIndex &)));
 
@@ -315,25 +328,32 @@ void DisplayContent::initConnections()
 
     connect(m_treeView, &LogTreeView::customContextMenuRequested, this, &DisplayContent::slot_requestShowRightMenu);
     connect(LogApplicationHelper::instance(), &LogApplicationHelper::sigValueChanged, this, &DisplayContent::slot_valueChanged_dConfig_or_gSetting);
+    qCDebug(logApp) << "All signal-slot connections established";
+    qCDebug(logApp) << "Initialize signal-slot connections end";
 }
 
 void DisplayContent::createLogTable(const QList<QString> &list, LOG_FLAG type)
 {
+    qCDebug(logApp) << "DisplayContent::createLogTable called with type:" << type << "list size:" << list.count();
     m_limitTag = 0;
 
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
     insertLogTable(list, 0, end, type);
     QItemSelectionModel *p = m_treeView->selectionModel();
-    if (p)
+    if (p) {
+        qCDebug(logApp) << "Selecting first row in table";
         p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
+    }
     slot_tableItemClicked(m_pModel->index(0, 0));
 }
 
 void DisplayContent::insertLogTable(const QList<QString> &list, int start, int end, LOG_FLAG type)
 {
+    qCDebug(logApp) << "DisplayContent::insertLogTable called with start:" << start << "end:" << end << "type:" << type;
     QList<QString> midList = list;
     if (end > start) {
+        qCDebug(logApp) << "Extracting sublist from" << start << "to" << end;
         midList = midList.mid(start, end - start);
     }
 
@@ -342,21 +362,28 @@ void DisplayContent::insertLogTable(const QList<QString> &list, int start, int e
 
 void DisplayContent::parseListToModel(const QList<QString> &list, QStandardItemModel *oPModel, LOG_FLAG type)
 {
+    qCDebug(logApp) << "Start parsing list to model, type:" << type << "item count:" << list.size();
+    
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << QString("log parse model is empty, type:%1").arg(type);
+        qCCritical(logApp) << QString("log parse model is empty, type:%1").arg(type);
         return;
     }
 
     if (list.isEmpty()) {
-        qCWarning(logDisplaycontent) << QString("log parse model data is empty, type:%1").arg(type);
+        qCWarning(logApp) << QString("log parse model data is empty, type:%1").arg(type);
         return;
     }
 
     DStandardItem *item = nullptr;
     QList<QStandardItem *> items;
     int listCount = list.size();
+    qCDebug(logApp) << "Processing" << listCount << "log items";
+    
     for (int i = 0; i < listCount; i++) {
         items.clear();
+        if (i % 100 == 0) {
+            qCDebug(logApp) << "Processing item" << i << "of" << listCount;
+        }
         if (type == KERN) {
             LOG_MSG_BASE data;
             data.fromJson(list[i]);
@@ -386,15 +413,21 @@ void DisplayContent::parseListToModel(const QList<QString> &list, QStandardItemM
 
 int DisplayContent::loadSegementPage(bool bNext/* = true*/, bool bReset/* = true*/)
 {
+    qCDebug(logApp) << "Loading segment page, direction:" << (bNext ? "next" : "previous") << "reset:" << bReset;
     int nSegementIndex = m_pLogBackend->getNextSegementIndex(m_flag, bNext);
-    qDebug() << "loadSegementPage index:" << nSegementIndex;
-    if(nSegementIndex == -1)
+    qCDebug(logApp) << "Segment page index:" << nSegementIndex;
+    if(nSegementIndex == -1) {
+        qCWarning(logApp) << "Invalid segment index, no more data available";
         return -1;
+    }
 
-    if (bReset)
+    if (bReset) {
+        qCDebug(logApp) << "Resetting data for new segment";
         clearAllDatas();
+    }
 
     setLoadState(DATA_LOADING, !bReset);
+    qCDebug(logApp) << "Data loading state set";
 
     // 1.正常分段加载翻页，重置表格
     // 2.搜索结果超过分段单位大小后，需要重置表格，显示下一页内容
@@ -427,9 +460,10 @@ int DisplayContent::loadSegementPage(bool bNext/* = true*/, bool bReset/* = true
 void DisplayContent::generateJournalFile(int id, int lId, const QString &iSearchStr)
 {
     Q_UNUSED(iSearchStr)
+    qCDebug(logApp) << "Start generating journal file, time filter:" << id << "level filter:" << lId;
     //系统日志上次获取的时间,和筛选条件一起判断,防止获取过于频繁
     if (m_lastJournalGetTime.msecsTo(QDateTime::currentDateTime()) < 500 && m_journalFilter.timeFilter == id && m_journalFilter.eventTypeFilter == lId) {
-        qCWarning(logDisplaycontent) << "load journal log: repeat refrsh journal too fast!";
+        qCWarning(logApp) << "load journal log: repeat refrsh journal too fast!";
         QItemSelectionModel *p = m_treeView->selectionModel();
         if (p)
             p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
@@ -440,11 +474,13 @@ void DisplayContent::generateJournalFile(int id, int lId, const QString &iSearch
     m_journalFilter.timeFilter = id;
     m_journalFilter.eventTypeFilter = lId;
     m_firstLoadPageData = true;
+    qCDebug(logApp) << "Clearing filters and previous data";
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     m_isDataLoadComplete = false;
     createJournalTableForm();
     setLoadState(DATA_LOADING);
+    qCDebug(logApp) << "Journal table form created, loading data...";
     QDateTime dt = QDateTime::currentDateTime();
     dt.setTime(QTime());
     QStringList arg;
@@ -509,13 +545,16 @@ void DisplayContent::generateJournalFile(int id, int lId, const QString &iSearch
  */
 void DisplayContent::createJournalTableStart(const QList<LOG_MSG_JOURNAL> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createJournalTableStart called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
     insertJournalTable(list, 0, end);
     QItemSelectionModel *p = m_treeView->selectionModel();
-    if (p)
+    if (p) {
+        qCDebug(logApp) << "Selecting first journal table row";
         p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
+    }
     slot_tableItemClicked(m_pModel->index(0, 0));
 }
 
@@ -524,6 +563,7 @@ void DisplayContent::createJournalTableStart(const QList<LOG_MSG_JOURNAL> &list)
  */
 void DisplayContent::createJournalTableForm()
 {
+    qCDebug(logApp) << "Creating journal log table form";
     m_pModel->clear();
 
     m_pModel->setHorizontalHeaderLabels(
@@ -546,6 +586,7 @@ void DisplayContent::createJournalTableForm()
 void DisplayContent::generateDpkgFile(int id, const QString &iSearchStr)
 {
     Q_UNUSED(iSearchStr)
+    qCDebug(logApp) << "DisplayContent::generateDpkgFile called with time filter:" << id;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -614,18 +655,22 @@ void DisplayContent::generateDpkgFile(int id, const QString &iSearchStr)
  */
 void DisplayContent::createDpkgTableStart(const QList<LOG_MSG_DPKG> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createDpkgTableStart called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
     insertDpkgTable(list, 0, end);
     QItemSelectionModel *p = m_treeView->selectionModel();
-    if (p)
+    if (p) {
+        qCDebug(logApp) << "Selecting first dpkg table row";
         p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
+    }
     slot_tableItemClicked(m_pModel->index(0, 0));
 }
 
 void DisplayContent::createDpkgTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createDpkgTableForm called";
     m_pModel->clear();
     m_pModel->setColumnCount(3);
     m_treeView->setColumnWidth(0, DATETIME_WIDTH);
@@ -644,6 +689,7 @@ void DisplayContent::createDpkgTableForm()
 void DisplayContent::generateKernFile(int id, const QString &iSearchStr)
 {
     Q_UNUSED(iSearchStr)
+    qCDebug(logApp) << "DisplayContent::generateKernFile called with time filter:" << id;
     m_pLogBackend->clearAllFilter();
 
     // 填充筛选条件
@@ -712,6 +758,7 @@ void DisplayContent::generateKernFile(int id, const QString &iSearchStr)
  */
 void DisplayContent::createKernTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createKernTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "Date and Time")
@@ -730,14 +777,17 @@ void DisplayContent::createKernTableForm()
 // modified by Airy for bug  12263
 void DisplayContent::createKernTable(const QList<LOG_MSG_JOURNAL> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createKernTable called with list size:" << list.count();
     setLoadState(DATA_COMPLETE);
 
     m_limitTag = 0;
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
     insertKernTable(list, 0, end);
     QItemSelectionModel *p = m_treeView->selectionModel();
-    if (p)
+    if (p) {
+        qCDebug(logApp) << "Selecting first kern table row";
         p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
+    }
     slot_tableItemClicked(m_pModel->index(0, 0));
 }
 
@@ -749,6 +799,7 @@ void DisplayContent::createKernTable(const QList<LOG_MSG_JOURNAL> &list)
  */
 void DisplayContent::insertKernTable(const QList<LOG_MSG_JOURNAL> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertKernTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_JOURNAL> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -764,6 +815,7 @@ void DisplayContent::insertKernTable(const QList<LOG_MSG_JOURNAL> &list, int sta
  */
 void DisplayContent::insertDpkgTable(const QList<LOG_MSG_DPKG> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertDpkgTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_DPKG> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -773,6 +825,7 @@ void DisplayContent::insertDpkgTable(const QList<LOG_MSG_DPKG> &list, int start,
 
 void DisplayContent::insertXorgTable(const QList<LOG_MSG_XORG> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertXorgTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_XORG> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -782,6 +835,7 @@ void DisplayContent::insertXorgTable(const QList<LOG_MSG_XORG> &list, int start,
 
 void DisplayContent::insertBootTable(const QList<LOG_MSG_BOOT> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertBootTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_BOOT> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -791,6 +845,7 @@ void DisplayContent::insertBootTable(const QList<LOG_MSG_BOOT> &list, int start,
 
 void DisplayContent::insertKwinTable(const QList<LOG_MSG_KWIN> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertKwinTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_KWIN> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -800,6 +855,7 @@ void DisplayContent::insertKwinTable(const QList<LOG_MSG_KWIN> &list, int start,
 
 void DisplayContent::insertNormalTable(const QList<LOG_MSG_NORMAL> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertNormalTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_NORMAL> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -809,6 +865,7 @@ void DisplayContent::insertNormalTable(const QList<LOG_MSG_NORMAL> &list, int st
 
 void DisplayContent::insertOOCTable(const QList<LOG_FILE_OTHERORCUSTOM> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertOOCTable called with start:" << start << "end:" << end;
     QList<LOG_FILE_OTHERORCUSTOM> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -818,6 +875,7 @@ void DisplayContent::insertOOCTable(const QList<LOG_FILE_OTHERORCUSTOM> &list, i
 
 void DisplayContent::insertAuditTable(const QList<LOG_MSG_AUDIT> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertAuditTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_AUDIT> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -827,6 +885,7 @@ void DisplayContent::insertAuditTable(const QList<LOG_MSG_AUDIT> &list, int star
 
 void DisplayContent::insertCoredumpTable(const QList<LOG_MSG_COREDUMP> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertCoredumpTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_COREDUMP> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -844,6 +903,7 @@ void DisplayContent::insertCoredumpTable(const QList<LOG_MSG_COREDUMP> &list, in
 void DisplayContent::generateAppFile(const QString &app, int id, int lId, const QString &iSearchStr)
 {
     Q_UNUSED(iSearchStr)
+    qCDebug(logApp) << "DisplayContent::generateAppFile called with app:" << app << "time filter:" << id << "level filter:" << lId;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -913,6 +973,7 @@ void DisplayContent::generateAppFile(const QString &app, int id, int lId, const 
  */
 void DisplayContent::createAppTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createAppTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "Level")
@@ -930,6 +991,7 @@ void DisplayContent::createAppTableForm()
  */
 void DisplayContent::createAppTable(const QList<LOG_MSG_APPLICATOIN> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createAppTable called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -946,6 +1008,7 @@ void DisplayContent::createAppTable(const QList<LOG_MSG_APPLICATOIN> &list)
  */
 void DisplayContent::createBootTable(const QList<LOG_MSG_BOOT> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createBootTable called with list size:" << list.count();
     m_limitTag = 0;
 
     setLoadState(DATA_COMPLETE);
@@ -959,6 +1022,7 @@ void DisplayContent::createBootTable(const QList<LOG_MSG_BOOT> &list)
 
 void DisplayContent::generateBootFile()
 {
+    qCDebug(logApp) << "DisplayContent::generateBootFile called";
     setLoadState(DATA_LOADING);
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
@@ -970,6 +1034,7 @@ void DisplayContent::generateBootFile()
 
 void DisplayContent::createXorgTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createXorgTableForm called";
     m_pModel->clear();
     m_pModel->setColumnCount(2);
     m_pModel->setHorizontalHeaderLabels(QStringList()
@@ -984,6 +1049,7 @@ void DisplayContent::createXorgTableForm()
  */
 void DisplayContent::createXorgTable(const QList<LOG_MSG_XORG> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createXorgTable called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -1000,6 +1066,7 @@ void DisplayContent::createXorgTable(const QList<LOG_MSG_XORG> &list)
  */
 void DisplayContent::generateXorgFile(int id)
 {
+    qCDebug(logApp) << "DisplayContent::generateXorgFile called with time filter:" << id;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -1062,6 +1129,7 @@ void DisplayContent::generateXorgFile(int id)
 
 void DisplayContent::createKwinTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createKwinTableForm called";
     m_pModel->clear();
     m_pModel->setColumnCount(1);
     m_pModel->setHorizontalHeaderLabels(QStringList()
@@ -1074,6 +1142,7 @@ void DisplayContent::createKwinTableForm()
  */
 void DisplayContent::creatKwinTable(const QList<LOG_MSG_KWIN> &list)
 {
+    qCDebug(logApp) << "DisplayContent::creatKwinTable called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -1089,6 +1158,7 @@ void DisplayContent::creatKwinTable(const QList<LOG_MSG_KWIN> &list)
  */
 void DisplayContent::generateKwinFile(const KWIN_FILTERS &iFilters)
 {
+    qCDebug(logApp) << "DisplayContent::generateKwinFile called";
     Q_UNUSED(iFilters)
     m_pLogBackend->clearAllFilter();
 
@@ -1101,6 +1171,7 @@ void DisplayContent::generateKwinFile(const KWIN_FILTERS &iFilters)
 
 void DisplayContent::createNormalTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createNormalTableForm called";
     m_pModel->clear();
     m_pModel->setColumnCount(4);
     m_pModel->setHorizontalHeaderLabels(QStringList()
@@ -1120,6 +1191,7 @@ void DisplayContent::createNormalTableForm()
  */
 void DisplayContent::createNormalTable(const QList<LOG_MSG_NORMAL> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createNormalTable called with list size:" << list.count();
     setLoadState(DATA_COMPLETE);
 
     m_limitTag = 0;
@@ -1138,6 +1210,7 @@ void DisplayContent::createNormalTable(const QList<LOG_MSG_NORMAL> &list)
 // add by Airy
 void DisplayContent::generateNormalFile(int id)
 {
+    qCDebug(logApp) << "DisplayContent::generateNormalFile called with time filter:" << id;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -1201,6 +1274,7 @@ void DisplayContent::generateNormalFile(int id)
  */
 void DisplayContent::insertJournalTable(QList<LOG_MSG_JOURNAL> logList, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertJournalTable called with start:" << start << "end:" << end;
     DStandardItem *item = nullptr;
     QList<QStandardItem *> items;
     for (int i = start; i < end; i++) {
@@ -1249,7 +1323,7 @@ void DisplayContent::insertJournalTable(QList<LOG_MSG_JOURNAL> logList, int star
  */
 QString DisplayContent::getAppName(const QString &filePath)
 {
-
+    qCDebug(logApp) << "DisplayContent::getAppName called with filePath:" << filePath;
     QString ret = Utils::appName(filePath);
     if (ret.isEmpty())
         return ret;
@@ -1263,6 +1337,7 @@ QString DisplayContent::getAppName(const QString &filePath)
  */
 bool DisplayContent::isAuthProcessAlive()
 {
+    qCDebug(logApp) << "DisplayContent::isAuthProcessAlive called";
     bool ret = false;
     QProcess proc;
     int rslt = proc.execute("ps -aux | grep 'logViewerAuth'");
@@ -1284,6 +1359,7 @@ bool DisplayContent::isAuthProcessAlive()
  */
 void DisplayContent::generateJournalBootFile(int lId, const QString &iSearchStr)
 {
+    qCDebug(logApp) << "DisplayContent::generateJournalBootFile called with level:" << lId << "and search string:" << iSearchStr;
     Q_UNUSED(iSearchStr)
     m_firstLoadPageData = true;
     m_pLogBackend->clearAllFilter();
@@ -1296,8 +1372,10 @@ void DisplayContent::generateJournalBootFile(int lId, const QString &iSearchStr)
     QStringList arg;
     if (lId != LVALL) {
         QString prio = QString("PRIORITY=%1").arg(lId);
+        qCDebug(logApp) << "Setting priority filter:" << prio;
         arg.append(prio);
     } else {
+        qCDebug(logApp) << "No priority filter set, loading all levels";
         arg.append("all");
     }
     m_pLogBackend->parseByJournalBoot(arg);
@@ -1313,6 +1391,7 @@ void DisplayContent::generateJournalBootFile(int lId, const QString &iSearchStr)
  */
 void DisplayContent::createJournalBootTableStart(const QList<LOG_MSG_JOURNAL> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createJournalBootTableStart called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -1324,6 +1403,7 @@ void DisplayContent::createJournalBootTableStart(const QList<LOG_MSG_JOURNAL> &l
  */
 void DisplayContent::createJournalBootTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createJournalBootTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(
         QStringList() << DApplication::translate("Table", "Level")
@@ -1345,6 +1425,7 @@ void DisplayContent::createJournalBootTableForm()
  */
 void DisplayContent::insertJournalBootTable(QList<LOG_MSG_JOURNAL> logList, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertJournalBootTable called with start:" << start << "end:" << end;
     DStandardItem *item = new DStandardItem();
     QList<QStandardItem *> items;
     for (int i = start; i < end; i++) {
@@ -1392,6 +1473,7 @@ void DisplayContent::insertJournalBootTable(QList<LOG_MSG_JOURNAL> logList, int 
 
 void DisplayContent::generateDnfFile(BUTTONID iDate, DNFPRIORITY iLevel)
 {
+    qCDebug(logApp) << "DisplayContent::generateDnfFile called with date:" << iDate << "and level:" << iLevel;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -1434,6 +1516,7 @@ void DisplayContent::generateDnfFile(BUTTONID iDate, DNFPRIORITY iLevel)
 
 void DisplayContent::createDnfTable(const QList<LOG_MSG_DNF> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createDnfTable called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -1446,6 +1529,7 @@ void DisplayContent::createDnfTable(const QList<LOG_MSG_DNF> &list)
 
 void DisplayContent::generateDmesgFile(BUTTONID iDate, PRIORITY iLevel)
 {
+    qCDebug(logApp) << "DisplayContent::generateDmesgFile called with date:" << iDate << "and level:" << iLevel;
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
     setLoadState(DATA_LOADING);
@@ -1488,6 +1572,7 @@ void DisplayContent::generateDmesgFile(BUTTONID iDate, PRIORITY iLevel)
 
 void DisplayContent::createDmesgTable(const QList<LOG_MSG_DMESG> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createDmesgTable called with list size:" << list.count();
     m_limitTag = 0;
     setLoadState(DATA_COMPLETE);
     int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
@@ -1500,6 +1585,7 @@ void DisplayContent::createDmesgTable(const QList<LOG_MSG_DMESG> &list)
 
 void DisplayContent::createDnfForm()
 {
+    qCDebug(logApp) << "DisplayContent::createDnfForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "Level")
@@ -1512,6 +1598,7 @@ void DisplayContent::createDnfForm()
 
 void DisplayContent::createDmesgForm()
 {
+    qCDebug(logApp) << "DisplayContent::createDmesgForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "Level")
@@ -1524,6 +1611,7 @@ void DisplayContent::createDmesgForm()
 
 void DisplayContent::insertDmesgTable(const QList<LOG_MSG_DMESG> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertDmesgTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_DMESG> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -1533,6 +1621,7 @@ void DisplayContent::insertDmesgTable(const QList<LOG_MSG_DMESG> &list, int star
 
 void DisplayContent::insertDnfTable(const QList<LOG_MSG_DNF> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertDnfTable called with start:" << start << "end:" << end;
     QList<LOG_MSG_DNF> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -1546,21 +1635,28 @@ void DisplayContent::insertDnfTable(const QList<LOG_MSG_DNF> &list, int start, i
  */
 void DisplayContent::slot_tableItemClicked(const QModelIndex &index)
 {
+    qCDebug(logApp) << "DisplayContent::slot_tableItemClicked called with index:" << index;
     if (!index.isValid()) {
+        qCDebug(logApp) << "Invalid table item clicked, row:" << index.row() << "column:" << index.column();
         return;
     }
 
     if (m_curTreeIndex == index) {
+        qCDebug(logApp) << "Same table item clicked, row:" << index.row() << "column:" << index.column() << "- skipping";
         return;
     }
 
     m_curTreeIndex = index;
 
     if (m_flag == OtherLog || m_flag == CustomLog) {
+        qCDebug(logApp) << "Other/Custom log item clicked, row:" << index.row()
+                                  << "path:" << m_pModel->item(index.row(), 0)->data(Qt::UserRole + 2).toString();
         QString path = m_pModel->item(index.row(), 0)->data(Qt::UserRole + 2).toString();
         m_pLogBackend->setFlag(m_flag);
         generateOOCFile(path);
     } else {
+        qCDebug(logApp) << "Log item clicked, row:" << index.row() << "column:" << index.column()
+                                  << ", type:" << m_flag << ", app:" << getAppName(m_curApp);
         emit sigDetailInfo(index, m_pModel, getAppName(m_curApp));
     }
 }
@@ -1573,14 +1669,18 @@ void DisplayContent::slot_tableItemClicked(const QModelIndex &index)
  */
 void DisplayContent::slot_BtnSelected(int btnId, int lId, QModelIndex idx)
 {
+    qCDebug(logApp) << "DisplayContent::slot_BtnSelected called with btnId:" << btnId << "lId:" << lId << "idx:" << idx;
     m_curLevel = lId; // m_curLevel equal combobox index-1;
     m_curBtnId = btnId;
 
     QString treeData = idx.data(ITEM_DATE_ROLE).toString();
-    if (treeData.isEmpty())
+    if (treeData.isEmpty()) {
+        qCDebug(logApp) << "treeData is empty";
         return;
+    }
 
     if (treeData.contains(OTHER_TREE_DATA, Qt::CaseInsensitive) || treeData.contains(CUSTOM_TREE_DATA, Qt::CaseInsensitive)) {
+        qCDebug(logApp) << "treeData contains OTHER_TREE_DATA or CUSTOM_TREE_DATA";
         return;
     }
 
@@ -1624,6 +1724,7 @@ void DisplayContent::slot_BtnSelected(int btnId, int lId, QModelIndex idx)
  */
 void DisplayContent::slot_appLogs(int btnId, const QString &app)
 {
+    qCDebug(logApp) << "DisplayContent::slot_appLogs called with btnId:" << btnId << "app:" << app;
     m_curApp = app;
     m_curBtnId = btnId;
     m_pLogBackend->m_appFilter.clear();
@@ -1637,11 +1738,14 @@ void DisplayContent::slot_appLogs(int btnId, const QString &app)
  */
 void DisplayContent::slot_logCatelogueClicked(const QModelIndex &index)
 {
+    qCDebug(logApp) << "DisplayContent::slot_logCatelogueClicked called with index:" << index;
     if (!index.isValid()) {
+        qCDebug(logApp) << "index is invalid";
         return;
     }
 
     if (m_curListIdx == index && (m_flag != KERN && m_flag != BOOT)) {
+        qCDebug(logApp) << "m_curListIdx == index and m_flag != KERN && m_flag != BOOT";
         return;
     }
 
@@ -1650,13 +1754,16 @@ void DisplayContent::slot_logCatelogueClicked(const QModelIndex &index)
     clearAllDatas();
 
     QString itemData = index.data(ITEM_DATE_ROLE).toString();
-    if (itemData.isEmpty())
+    if (itemData.isEmpty()) {
+        qCDebug(logApp) << "itemData is empty";
         return;
+    }
 
     //界面参数变化
     int height = this->height();
     int handleW = m_splitter->handleWidth();
     if (itemData.contains(CUSTOM_TREE_DATA, Qt::CaseInsensitive) || itemData.contains(OTHER_TREE_DATA, Qt::CaseInsensitive)) {
+        qCDebug(logApp) << "itemData contains CUSTOM_TREE_DATA or OTHER_TREE_DATA";
         m_splitter->handle(3)->setDisabled(false);
         m_detailWgt->setFixedHeight(QWIDGETSIZE_MAX);
         m_detailWgt->setMinimumHeight(70);
@@ -1667,6 +1774,7 @@ void DisplayContent::slot_logCatelogueClicked(const QModelIndex &index)
         int heightDetailWgt = height - heightLogTree - handleW;
         m_splitter->setSizes(QList<int>() << heightLogTree << heightDetailWgt << heightDetailWgt << heightDetailWgt);
     } else {
+        qCDebug(logApp) << "itemData does not contain CUSTOM_TREE_DATA or OTHER_TREE_DATA";
         height -= handleW;
         m_splitter->handle(3)->setDisabled(true);
         m_detailWgt->setFixedHeight(230);
@@ -1737,6 +1845,7 @@ void DisplayContent::slot_logCatelogueClicked(const QModelIndex &index)
  */
 void DisplayContent::slot_exportClicked()
 {
+    qCDebug(logApp) << "DisplayContent::slot_exportClicked called";
     QString logName;
     if (m_curListIdx.isValid())
         logName = QString("/%1").arg(m_curListIdx.data().toString());
@@ -1760,7 +1869,11 @@ void DisplayContent::slot_exportClicked()
     }
 
     if (fileName.isEmpty()) {
+        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         DApplication::setActiveWindow(this);
+        #else
+        this->activateWindow();
+        #endif
         return;
     }
 
@@ -1800,6 +1913,7 @@ void DisplayContent::slot_exportClicked()
  */
 void DisplayContent::slot_statusChagned(const QString &status)
 {
+    qCDebug(logApp) << "DisplayContent::slot_statusChagned called with status:" << status;
     m_pLogBackend->m_bootFilter.statusFilter = status;
     m_pLogBackend->currentBootList = LogBackend::filterBoot(m_pLogBackend->m_bootFilter, m_pLogBackend->bList);
     createBootTableForm();
@@ -1808,17 +1922,24 @@ void DisplayContent::slot_statusChagned(const QString &status)
 
 void DisplayContent::slot_parseFinished(LOG_FLAG type, int status)
 {
-    if (m_flag != type)
+    qCDebug(logApp) << "DisplayContent::slot_parseFinished called with type:" << type << "status:" << status;
+    if (m_flag != type) {
+        qCDebug(logApp) << "m_flag != type";
         return;
+    }
 
-    qCDebug(logDisplaycontent) << QString("parse finished m_type2LogData[%1] dataCount: %2 segement index: %3").arg(type).arg(m_pLogBackend->m_type2LogData[type].count()).arg(m_pLogBackend->m_type2Filter[type].segementIndex);
+    qCDebug(logApp) << QString("parse finished m_type2LogData[%1] dataCount: %2 segement index: %3").arg(type).arg(m_pLogBackend->m_type2LogData[type].count()).arg(m_pLogBackend->m_type2Filter[type].segementIndex);
 
     int nSegementIndex = -1;
     // 取消鉴权时，若导出进度条存在，则隐藏
     if (status == ParseThreadBase::CancelAuth) {
         if (m_exportDlg && !m_exportDlg->isHidden()) {
             m_exportDlg->hide();
+            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             DApplication::setActiveWindow(this);
+            #else
+            this->activateWindow();
+            #endif
         }
     } else {
         // 分段加载逻辑处理
@@ -1844,14 +1965,17 @@ void DisplayContent::slot_parseFinished(LOG_FLAG type, int status)
             m_detailWgt->hideLine(false);
         }
 
-        qCDebug(logDisplaycontent) << QString("parse/search end... type:[%1]").arg(type);
+        qCDebug(logApp) << QString("parse/search end... type:[%1]").arg(type);
     }
 }
 
 void DisplayContent::slot_logData(const QList<QString> &list, LOG_FLAG type)
 {
-    if (m_flag != type)
+    qCDebug(logApp) << "DisplayContent::slot_logData called with type:" << type;
+    if (m_flag != type) {
+        qCDebug(logApp) << "m_flag != type";
         return;
+    }
 
     if (!list.isEmpty()) {
         int rowCount = m_pModel->rowCount();
@@ -1866,6 +1990,7 @@ void DisplayContent::slot_logData(const QList<QString> &list, LOG_FLAG type)
 
 void DisplayContent::slot_clearTable()
 {
+    qCDebug(logApp) << "DisplayContent::slot_clearTable called";
     m_pModel->clear();
     if (m_flag == KERN)
         createKernTableForm();
@@ -1878,8 +2003,11 @@ void DisplayContent::slot_clearTable()
  */
 void DisplayContent::slot_dpkgFinished()
 {
-    if (m_flag != DPKG)
+    qCDebug(logApp) << "DisplayContent::slot_dpkgFinished called";
+    if (m_flag != DPKG) {
+        qCDebug(logApp) << "m_flag != DPKG";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->dList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -1889,8 +2017,11 @@ void DisplayContent::slot_dpkgFinished()
 
 void DisplayContent::slot_dpkgData(const QList<LOG_MSG_DPKG> &list)
 {
-    if (m_flag != DPKG)
+    qCDebug(logApp) << "DisplayContent::slot_dpkgData called";
+    if (m_flag != DPKG) {
+        qCDebug(logApp) << "m_flag != DPKG";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -1905,8 +2036,11 @@ void DisplayContent::slot_dpkgData(const QList<LOG_MSG_DPKG> &list)
  */
 void DisplayContent::slot_XorgFinished()
 {
-    if (m_flag != XORG)
+    qCDebug(logApp) << "DisplayContent::slot_XorgFinished called";
+    if (m_flag != XORG) {
+        qCDebug(logApp) << "m_flag != XORG";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->xList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -1916,8 +2050,11 @@ void DisplayContent::slot_XorgFinished()
 
 void DisplayContent::slot_xorgData(const QList<LOG_MSG_XORG> &list)
 {
-    if (m_flag != XORG)
+    qCDebug(logApp) << "DisplayContent::slot_xorgData called";
+    if (m_flag != XORG) {
+        qCDebug(logApp) << "m_flag != XORG";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -1932,8 +2069,11 @@ void DisplayContent::slot_xorgData(const QList<LOG_MSG_XORG> &list)
  */
 void DisplayContent::slot_bootFinished()
 {
-    if (m_flag != BOOT)
+    qCDebug(logApp) << "DisplayContent::slot_bootFinished called";
+    if (m_flag != BOOT) {
+        qCDebug(logApp) << "m_flag != BOOT";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->currentBootList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -1943,11 +2083,15 @@ void DisplayContent::slot_bootFinished()
 
 void DisplayContent::slot_bootData(const QList<LOG_MSG_BOOT> &list)
 {
-    if (m_flag != BOOT)
+    qCDebug(logApp) << "DisplayContent::slot_bootData called";
+    if (m_flag != BOOT) {
+        qCDebug(logApp) << "m_flag != BOOT";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
+        qCDebug(logApp) << "DisplayContent::slot_bootData called with list size:" << list.count();
         createBootTable(list);
         m_firstLoadPageData = false;
         PERF_PRINT_END("POINT-03", "type=boot");
@@ -1960,10 +2104,14 @@ void DisplayContent::slot_bootData(const QList<LOG_MSG_BOOT> &list)
  */
 void DisplayContent::slot_kernFinished()
 {
-    if (m_flag != KERN)
+    qCDebug(logApp) << "DisplayContent::slot_kernFinished called";
+    if (m_flag != KERN) {
+        qCDebug(logApp) << "m_flag != KERN";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->kList.isEmpty()) {
+        qCDebug(logApp) << "m_pLogBackend->kList is empty";
         setLoadState(DATA_COMPLETE);
         createKernTable(m_pLogBackend->kList);
     }
@@ -1971,11 +2119,15 @@ void DisplayContent::slot_kernFinished()
 
 void DisplayContent::slot_kernData(const QList<LOG_MSG_JOURNAL> &list)
 {
-    if (m_flag != KERN)
+    qCDebug(logApp) << "DisplayContent::slot_kernData called";
+    if (m_flag != KERN) {
+        qCDebug(logApp) << "m_flag != KERN";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
+        qCDebug(logApp) << "DisplayContent::slot_kernData called with list size:" << list.count();
         createKernTable(list);
         m_firstLoadPageData = false;
         PERF_PRINT_END("POINT-03", "type=kern");
@@ -1988,10 +2140,14 @@ void DisplayContent::slot_kernData(const QList<LOG_MSG_JOURNAL> &list)
  */
 void DisplayContent::slot_kwinFinished()
 {
-    if (m_flag != Kwin)
+    qCDebug(logApp) << "DisplayContent::slot_kwinFinished called";
+    if (m_flag != Kwin) {
+        qCDebug(logApp) << "m_flag != Kwin";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->m_currentKwinList.isEmpty()) {
+        qCDebug(logApp) << "m_pLogBackend->m_currentKwinList is empty";
         setLoadState(DATA_COMPLETE);
         creatKwinTable(m_pLogBackend->m_currentKwinList);
     }
@@ -1999,10 +2155,14 @@ void DisplayContent::slot_kwinFinished()
 
 void DisplayContent::slot_kwinData(const QList<LOG_MSG_KWIN> &list)
 {
-    if (m_flag != Kwin)
+    qCDebug(logApp) << "DisplayContent::slot_kwinData called";
+    if (m_flag != Kwin) {
+        qCDebug(logApp) << "m_flag != Kwin";
         return;
+    }
 
     if (m_firstLoadPageData && !list.isEmpty()) {
+        qCDebug(logApp) << "DisplayContent::slot_kwinData called with list size:" << list.count();
         creatKwinTable(list);
         m_firstLoadPageData = false;
         PERF_PRINT_END("POINT-03", "type=kwin");
@@ -2011,10 +2171,14 @@ void DisplayContent::slot_kwinData(const QList<LOG_MSG_KWIN> &list)
 
 void DisplayContent::slot_journalFinished()
 {
-    if (m_flag != JOURNAL)
+    qCDebug(logApp) << "DisplayContent::slot_journalFinished called";
+    if (m_flag != JOURNAL) {
+        qCDebug(logApp) << "m_flag != JOURNAL";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->jList.isEmpty()) {
+        qCDebug(logApp) << "m_pLogBackend->jList is empty";
         setLoadState(DATA_COMPLETE);
         createJournalTableStart(m_pLogBackend->jList);
     }
@@ -2022,17 +2186,22 @@ void DisplayContent::slot_journalFinished()
 
 void DisplayContent::slot_dnfFinished(const QList<LOG_MSG_DNF> &list)
 {
-    if (m_flag != Dnf)
+    qCDebug(logApp) << "DisplayContent::slot_dnfFinished called";
+    if (m_flag != Dnf) {
+        qCDebug(logApp) << "m_flag != Dnf";
         return;
-
+    }
     createDnfTable(list);
     PERF_PRINT_END("POINT-03", "type=dnf");
 }
 
 void DisplayContent::slot_dmesgFinished(const QList<LOG_MSG_DMESG> &list)
 {
-    if (m_flag != Dmesg)
+    qCDebug(logApp) << "DisplayContent::slot_dmesgFinished called";
+    if (m_flag != Dmesg) {
+        qCDebug(logApp) << "m_flag != Dmesg";
         return;
+    }
 
     createDmesgTable(list);
     PERF_PRINT_END("POINT-03", "type=dmesg");
@@ -2045,9 +2214,12 @@ void DisplayContent::slot_dmesgFinished(const QList<LOG_MSG_DMESG> &list)
  */
 void DisplayContent::slot_journalData(const QList<LOG_MSG_JOURNAL> &list)
 {
+    qCDebug(logApp) << "DisplayContent::slot_journalData called";
     //判断最近一次获取数据线程的标记量,和信号曹发来的sender的标记量作对比,如果相同才可以刷新,因为会出现上次的获取线程就算停下信号也发出来了
-    if (m_flag != JOURNAL)
+    if (m_flag != JOURNAL) {
+        qCDebug(logApp) << "m_flag != JOURNAL";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -2060,8 +2232,11 @@ void DisplayContent::slot_journalData(const QList<LOG_MSG_JOURNAL> &list)
 
 void DisplayContent::slot_journalBootFinished()
 {
-    if (m_flag != BOOT_KLU)
+    qCDebug(logApp) << "DisplayContent::slot_journalBootFinished called";
+    if (m_flag != BOOT_KLU) {
+        qCDebug(logApp) << "m_flag != BOOT_KLU";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->jBootList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -2076,8 +2251,11 @@ void DisplayContent::slot_journalBootFinished()
  */
 void DisplayContent::slot_journalBootData(const QList<LOG_MSG_JOURNAL> &list)
 {
-    if (m_flag != BOOT_KLU)
+    qCDebug(logApp) << "DisplayContent::slot_journalBootData called";
+    if (m_flag != BOOT_KLU) {
+        qCDebug(logApp) << "m_flag != BOOT_KLU";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -2092,8 +2270,11 @@ void DisplayContent::slot_journalBootData(const QList<LOG_MSG_JOURNAL> &list)
  */
 void DisplayContent::slot_applicationFinished()
 {
-    if (m_flag != APP)
+    qCDebug(logApp) << "DisplayContent::slot_applicationFinished called";
+    if (m_flag != APP) {
+        qCDebug(logApp) << "m_flag != APP";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->appList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -2103,8 +2284,11 @@ void DisplayContent::slot_applicationFinished()
 
 void DisplayContent::slot_applicationData(const QList<LOG_MSG_APPLICATOIN> &list)
 {
-    if (m_flag != APP)
+    qCDebug(logApp) << "DisplayContent::slot_applicationData called";
+    if (m_flag != APP) {
+        qCDebug(logApp) << "m_flag != APP";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -2116,8 +2300,11 @@ void DisplayContent::slot_applicationData(const QList<LOG_MSG_APPLICATOIN> &list
 
 void DisplayContent::slot_normalFinished()
 {
-    if (m_flag != Normal)
+    qCDebug(logApp) << "DisplayContent::slot_normalFinished called";
+    if (m_flag != Normal) {
+        qCDebug(logApp) << "m_flag != Normal";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->nortempList.isEmpty()) {
         setLoadState(DATA_COMPLETE);
@@ -2127,8 +2314,11 @@ void DisplayContent::slot_normalFinished()
 
 void DisplayContent::slot_normalData(const QList<LOG_MSG_NORMAL> &list)
 {
-    if (m_flag != Normal)
+    qCDebug(logApp) << "DisplayContent::slot_normalData called";
+    if (m_flag != Normal) {
+        qCDebug(logApp) << "m_flag != Normal";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -2140,8 +2330,11 @@ void DisplayContent::slot_normalData(const QList<LOG_MSG_NORMAL> &list)
 
 void DisplayContent::slot_OOCData(const QString &data)
 {
-    if ((m_flag != OtherLog && m_flag != CustomLog))
+    qCDebug(logApp) << "DisplayContent::slot_OOCData called";
+    if ((m_flag != OtherLog && m_flag != CustomLog)) {
+        qCDebug(logApp) << "m_flag != OtherLog && m_flag != CustomLog";
         return;
+    }
 
     if (!m_treeView->selectionModel()->selectedRows().isEmpty())
         emit sigDetailInfo(m_treeView->selectionModel()->selectedRows().first(), m_pModel, data);
@@ -2149,8 +2342,11 @@ void DisplayContent::slot_OOCData(const QString &data)
 
 void DisplayContent::slot_auditFinished(bool bShowTip/* = false*/)
 {
-    if (m_flag != Audit)
+    qCDebug(logApp) << "DisplayContent::slot_auditFinished called";
+    if (m_flag != Audit) {
+        qCDebug(logApp) << "m_flag != Audit";
         return;
+    }
     m_isDataLoadComplete = true;
     if (m_pLogBackend->aList.isEmpty()) {
         if (bShowTip) {
@@ -2169,8 +2365,11 @@ void DisplayContent::slot_auditFinished(bool bShowTip/* = false*/)
 
 void DisplayContent::slot_auditData(const QList<LOG_MSG_AUDIT> &list)
 {
-    if (m_flag != Audit)
+    qCDebug(logApp) << "DisplayContent::slot_auditData called";
+    if (m_flag != Audit) {
+        qCDebug(logApp) << "m_flag != Audit";
         return;
+    }
 
     //因为此槽会在同一次加载数据完成前触发数次,所以第一次收到数据需要更新界面状态,后面的话往model里塞数据就行
     if (m_firstLoadPageData && !list.isEmpty()) {
@@ -2182,8 +2381,11 @@ void DisplayContent::slot_auditData(const QList<LOG_MSG_AUDIT> &list)
 
 void DisplayContent::slot_coredumpFinished()
 {
-    if (m_flag != COREDUMP)
+    qCDebug(logApp) << "DisplayContent::slot_coredumpFinished called";
+    if (m_flag != COREDUMP) {
+        qCDebug(logApp) << "m_flag != COREDUMP";
         return;
+    }
 
     m_isDataLoadComplete = true;
     if (m_pLogBackend->m_currentCoredumpList.isEmpty()) {
@@ -2194,8 +2396,11 @@ void DisplayContent::slot_coredumpFinished()
 }
 void DisplayContent::slot_coredumpData(const QList<LOG_MSG_COREDUMP> &list, bool newData)
 {
-    if (m_flag != COREDUMP)
+    qCDebug(logApp) << "DisplayContent::slot_coredumpData called";
+    if (m_flag != COREDUMP) {
+        qCDebug(logApp) << "m_flag != COREDUMP";
         return;
+    }
 
     //分页已到底部，来新数据时需要刷新到下一页
     int value = m_treeView->verticalScrollBar()->value();
@@ -2218,8 +2423,11 @@ void DisplayContent::slot_coredumpData(const QList<LOG_MSG_COREDUMP> &list, bool
 
 void DisplayContent::slot_OOCFinished(int error)
 {
-    if ((m_flag != OtherLog && m_flag != CustomLog))
+    qCDebug(logApp) << "DisplayContent::slot_OOCFinished called";
+    if ((m_flag != OtherLog && m_flag != CustomLog)) {
+        qCDebug(logApp) << "m_flag != OtherLog && m_flag != CustomLog";
         return;
+    }
     m_isDataLoadComplete = true;
     setLoadState(DATA_COMPLETE);
 
@@ -2236,6 +2444,7 @@ void DisplayContent::slot_OOCFinished(int error)
  */
 void DisplayContent::slot_logLoadFailed(const QString &iError)
 {
+    qCDebug(logApp) << "DisplayContent::slot_logLoadFailed called";
     QString titleIcon = ICONPREFIX;
     DMessageManager::instance()->sendMessage(this->window(), QIcon(titleIcon + "warning_info.svg"), iError);
 }
@@ -2246,15 +2455,19 @@ void DisplayContent::slot_logLoadFailed(const QString &iError)
  */
 void DisplayContent::slot_vScrollValueChanged(int valuePixel)
 {
+    qCDebug(logApp) << "DisplayContent::slot_vScrollValueChanged called";
     if (!m_treeView) {
+        qCDebug(logApp) << "m_treeView is null";
         return;
     }
     if (m_treeView->singleRowHeight() < 0) {
+        qCDebug(logApp) << "m_treeView->singleRowHeight() < 0";
         return;
     }
     //根据当前表格单行行高计算现在滑动了多少项
     int value = valuePixel / m_treeView->singleRowHeight(); // m_treeView->singleRowHeight();
     if (m_treeViewLastScrollValue == value) {
+        qCDebug(logApp) << "m_treeViewLastScrollValue == value";
         return;
     }
     m_treeViewLastScrollValue = value;
@@ -2264,12 +2477,14 @@ void DisplayContent::slot_vScrollValueChanged(int valuePixel)
     // 滚动到顶部，启动向上分段加载
     if (m_treeView->verticalScrollBar()->minimum() == m_treeView->verticalScrollBar()->value() && 0 == rateValue) {
         loadSegementPage(false);
+        qCDebug(logApp) << "loadSegementPage(false)";
         return;
     }
 
     // 滚动到底部，启动向下分段加载
     if (m_treeView->verticalScrollBar()->maximum() == m_treeView->verticalScrollBar()->value()) {
         loadSegementPage();
+        qCDebug(logApp) << "loadSegementPage()";
         return;
     }
 
@@ -2484,13 +2699,17 @@ void DisplayContent::slot_vScrollValueChanged(int valuePixel)
  */
 void DisplayContent::slot_searchResult(const QString &str)
 {
+    qCDebug(logApp) << "DisplayContent::slot_searchResult called";
     m_pLogBackend->m_currentSearchStr = str;
-    if (m_flag == NONE)
+    if (m_flag == NONE) {
+        qCDebug(logApp) << "m_flag == NONE";
         return;
+    }
 
     bool bHasNext = false;
     switch (m_flag) {
     case JOURNAL: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult JOURNAL";
         m_pLogBackend->jList = m_pLogBackend->jListOrigin;
         m_pLogBackend->jList.clear();
         m_pLogBackend->jList = LogBackend::filterJournal(m_pLogBackend->m_currentSearchStr, m_pLogBackend->jListOrigin);
@@ -2500,6 +2719,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case BOOT_KLU: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult BOOT_KLU";
         m_pLogBackend->jBootList.clear();
         m_pLogBackend->jBootList = LogBackend::filterJournalBoot(m_pLogBackend->m_currentSearchStr, m_pLogBackend->jBootListOrigin);
         createJournalBootTableForm();
@@ -2508,7 +2728,8 @@ void DisplayContent::slot_searchResult(const QString &str)
     break;
     case Kwin:
     case KERN: {
-        qCDebug(logDisplaycontent) << QString("search start... keyword:%1").arg(str);
+        qCDebug(logApp) << "DisplayContent::slot_searchResult KERN";
+        qCDebug(logApp) << QString("search start... keyword:%1").arg(str);
         if (m_pLogBackend->m_type2Filter[m_flag].segementIndex == 0) {
             // 刚好在分段首页，直接搜索，同老逻辑一样
             m_pLogBackend->m_type2LogData[m_flag] = LogBackend::filterLog(m_pLogBackend->m_currentSearchStr, m_pLogBackend->m_type2LogDataOrigin[m_flag]);
@@ -2532,6 +2753,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case BOOT: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult BOOT";
         m_pLogBackend->m_bootFilter.searchstr = m_pLogBackend->m_currentSearchStr;
         m_pLogBackend->currentBootList = LogBackend::filterBoot(m_pLogBackend->m_bootFilter, m_pLogBackend->bList);
         createBootTableForm();
@@ -2539,6 +2761,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case XORG: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult XORG";
         m_pLogBackend->xList.clear();
         m_pLogBackend->xList = LogBackend::filterXorg(m_pLogBackend->m_currentSearchStr, m_pLogBackend->xListOrigin);
         createXorgTableForm();
@@ -2546,6 +2769,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case DPKG: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult DPKG";
         m_pLogBackend->dList.clear();
         m_pLogBackend->dList = LogBackend::filterDpkg(m_pLogBackend->m_currentSearchStr, m_pLogBackend->dListOrigin);
         createDpkgTableForm();
@@ -2553,6 +2777,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case APP: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult APP";
         m_pLogBackend->appList.clear();
         m_pLogBackend->m_appFilter.searchstr = m_pLogBackend->m_currentSearchStr;
         m_pLogBackend->appList = LogBackend::filterApp(m_pLogBackend->m_appFilter, m_pLogBackend->appListOrigin);
@@ -2561,6 +2786,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case Normal: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult Normal";
         m_pLogBackend->m_normalFilter.searchstr = m_pLogBackend->m_currentSearchStr;
         m_pLogBackend->nortempList = LogBackend::filterNomal(m_pLogBackend->m_normalFilter, m_pLogBackend->norList);
         createNormalTableForm();
@@ -2568,6 +2794,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break; // add by Airy
     case Dnf: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult DNF";
         m_pLogBackend->dnfList.clear();
         m_pLogBackend->dnfList = LogBackend::filterDnf(m_pLogBackend->m_currentSearchStr, m_pLogBackend->dnfListOrigin);
         createDnfForm();
@@ -2575,6 +2802,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case Dmesg: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult Dmesg";
         m_pLogBackend->dmesgList.clear();
         m_pLogBackend->dmesgList = LogBackend::filterDmesg(m_pLogBackend->m_currentSearchStr, m_pLogBackend->dmesgListOrigin);
         createDmesgForm();
@@ -2582,6 +2810,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case OtherLog: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult OtherLog";
         m_pLogBackend->oList.clear();
         m_pLogBackend->oList = LogBackend::filterOOC(m_pLogBackend->m_currentSearchStr, m_pLogBackend->oListOrigin);
         createOOCTableForm();
@@ -2589,6 +2818,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case CustomLog: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult CustomLog";
         m_pLogBackend->cList.clear();
         m_pLogBackend->cList = LogBackend::filterOOC(m_pLogBackend->m_currentSearchStr, m_pLogBackend->cListOrigin);
         createOOCTableForm();
@@ -2596,6 +2826,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case Audit: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult Audit";
         m_pLogBackend->aList.clear();
         m_pLogBackend->m_auditFilter.searchstr = m_pLogBackend->m_currentSearchStr;
         m_pLogBackend->aList = LogBackend::filterAudit(m_pLogBackend->m_auditFilter, m_pLogBackend->aListOrigin);
@@ -2604,6 +2835,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case COREDUMP: {
+        qCDebug(logApp) << "DisplayContent::slot_searchResult COREDUMP";
         m_pLogBackend->m_currentCoredumpList.clear();
         m_pLogBackend->m_currentCoredumpList = LogBackend::filterCoredump(m_pLogBackend->m_currentSearchStr, m_pLogBackend->m_coredumpList);
         createCoredumpTableForm();
@@ -2616,16 +2848,21 @@ void DisplayContent::slot_searchResult(const QString &str)
     //如果搜索结果为空要显示无搜索结果提示
     if (0 == m_pModel->rowCount()) {
         if (m_pLogBackend->m_currentSearchStr.isEmpty()) {
-            if (m_flag != KERN && m_flag != Kwin)
+            if (m_flag != KERN && m_flag != Kwin) {
+                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is empty and m_flag != KERN && m_flag != Kwin";
                 setLoadState(DATA_COMPLETE);
+            }
         } else {
-            if ((m_flag != KERN && m_flag != Kwin) || !bHasNext)
+            if ((m_flag != KERN && m_flag != Kwin) || !bHasNext) {
+                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin) || !bHasNext)";
                 setLoadState(DATA_NO_SEARCH_RESULT);
+            }
         }
         m_detailWgt->cleanText();
         m_detailWgt->hideLine(true);
     } else {
         if ((m_flag != KERN && m_flag != Kwin) || !bHasNext) {
+            qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin) || !bHasNext)";
             setLoadState(DATA_COMPLETE);
             m_detailWgt->hideLine(false);
         }
@@ -2638,13 +2875,18 @@ void DisplayContent::slot_searchResult(const QString &str)
  */
 void DisplayContent::slot_getSubmodule(int tcbx)
 {
-    if (tcbx == 0)
+    qCDebug(logApp) << "DisplayContent::slot_getSubmodule called";
+    if (tcbx == 0) {
+        qCDebug(logApp) << "tcbx == 0";
         m_pLogBackend->m_appFilter.submodule = "";
+    }
     else {
         AppLogConfig logConfig = LogApplicationHelper::instance()->appLogConfig(m_pLogBackend->m_appFilter.app);
         int nSubModuleIndex = tcbx - 1;
-        if (logConfig.subModules.size() > 0 && nSubModuleIndex < logConfig.subModules.size())
+        if (logConfig.subModules.size() > 0 && nSubModuleIndex < logConfig.subModules.size()) {
+            qCDebug(logApp) << "logConfig.subModules.size() > 0 && nSubModuleIndex < logConfig.subModules.size()";
             m_pLogBackend->m_appFilter.submodule = logConfig.subModules[nSubModuleIndex].name;
+        }
     }
     m_pLogBackend->appList = LogBackend::filterApp(m_pLogBackend->m_appFilter, m_pLogBackend->appListOrigin);
     createAppTableForm();
@@ -2657,6 +2899,7 @@ void DisplayContent::slot_getSubmodule(int tcbx)
  */
 void DisplayContent::slot_getLogtype(int tcbx)
 {
+    qCDebug(logApp) << "DisplayContent::slot_getLogtype called";
     m_curNormalEventType = tcbx;
     m_pLogBackend->m_normalFilter.eventTypeFilter = tcbx;
     m_pLogBackend->nortempList = LogBackend::filterNomal(m_pLogBackend->m_normalFilter, m_pLogBackend->norList);
@@ -2666,6 +2909,7 @@ void DisplayContent::slot_getLogtype(int tcbx)
 
 void DisplayContent::slot_getAuditType(int tcbx)
 {
+    qCDebug(logApp) << "DisplayContent::slot_getAuditType called";
     m_curAuditType = tcbx;
     m_pLogBackend->m_auditFilter.auditTypeFilter = tcbx;
     m_pLogBackend->aList = LogBackend::filterAudit(m_pLogBackend->m_auditFilter, m_pLogBackend->aListOrigin);
@@ -2680,12 +2924,13 @@ void DisplayContent::slot_getAuditType(int tcbx)
  */
 void DisplayContent::parseListToModel(const QList<LOG_MSG_DPKG> &iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "dpkg parse model is empty";
+        qCWarning(logApp) << "dpkg parse model is empty";
         return;
     }
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "dpkg parse model data is empty";
+        qCWarning(logApp) << "dpkg parse model data is empty";
         return;
     }
     QList<LOG_MSG_DPKG> list = iList;
@@ -2717,13 +2962,14 @@ void DisplayContent::parseListToModel(const QList<LOG_MSG_DPKG> &iList, QStandar
  */
 void DisplayContent::parseListToModel(const QList<LOG_MSG_BOOT> &iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "boot parse model is empty";
+        qCWarning(logApp) << "boot parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "boot parse model data is empty";
+        qCWarning(logApp) << "boot parse model data is empty";
         return;
     }
     QList<LOG_MSG_BOOT> list = iList;
@@ -2750,13 +2996,14 @@ void DisplayContent::parseListToModel(const QList<LOG_MSG_BOOT> &iList, QStandar
  */
 void DisplayContent::parseListToModel(QList<LOG_MSG_APPLICATOIN> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "app log parse model is empty";
+        qCWarning(logApp) << "app log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "app log parse model data is empty";
+        qCWarning(logApp) << "app log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -2803,13 +3050,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_APPLICATOIN> iList, QStandar
  */
 void DisplayContent::parseListToModel(QList<LOG_MSG_XORG> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "xorg log parse model is empty";
+        qCWarning(logApp) << "xorg log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "xorg log parse model data is empty";
+        qCWarning(logApp) << "xorg log parse model data is empty";
         return;
     }
     DStandardItem *item = nullptr;
@@ -2836,13 +3084,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_XORG> iList, QStandardItemMo
  */
 void DisplayContent::parseListToModel(QList<LOG_MSG_NORMAL> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "boot-shutdown-event log parse model is empty";
+        qCWarning(logApp) << "boot-shutdown-event log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "boot-shutdown-event log parse model data is empty";
+        qCWarning(logApp) << "boot-shutdown-event log parse model data is empty";
         return;
     }
     DStandardItem *item = nullptr;
@@ -2877,13 +3126,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_NORMAL> iList, QStandardItem
  */
 void DisplayContent::parseListToModel(QList<LOG_MSG_KWIN> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "kwin log parse model is empty";
+        qCWarning(logApp) << "kwin log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "kwin log parse model data is empty";
+        qCWarning(logApp) << "kwin log parse model data is empty";
         return;
     }
     DStandardItem *item = nullptr;
@@ -2901,13 +3151,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_KWIN> iList, QStandardItemMo
 
 void DisplayContent::parseListToModel(QList<LOG_MSG_DNF> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "dnf log parse model is empty";
+        qCWarning(logApp) << "dnf log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "dnf log parse model data is empty";
+        qCWarning(logApp) << "dnf log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -2937,13 +3188,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_DNF> iList, QStandardItemMod
 
 void DisplayContent::parseListToModel(QList<LOG_MSG_DMESG> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "dmesg log parse model is empty";
+        qCWarning(logApp) << "dmesg log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "dmesg log parse model data is empty";
+        qCWarning(logApp) << "dmesg log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -2972,13 +3224,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_DMESG> iList, QStandardItemM
 
 void DisplayContent::parseListToModel(QList<LOG_FILE_OTHERORCUSTOM> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "other log parse model is empty";
+        qCWarning(logApp) << "other log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "other log parse model data is empty";
+        qCWarning(logApp) << "other log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -2999,13 +3252,14 @@ void DisplayContent::parseListToModel(QList<LOG_FILE_OTHERORCUSTOM> iList, QStan
 
 void DisplayContent::parseListToModel(QList<LOG_MSG_AUDIT> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "audit log parse model is empty";
+        qCWarning(logApp) << "audit log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "audit log parse model data is empty";
+        qCWarning(logApp) << "audit log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -3040,13 +3294,14 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_AUDIT> iList, QStandardItemM
 
 void DisplayContent::parseListToModel(QList<LOG_MSG_COREDUMP> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "coredump log parse model is empty";
+        qCWarning(logApp) << "coredump log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "coredump log parse model data is empty";
+        qCWarning(logApp) << "coredump log parse model data is empty";
         return;
     }
     QList<QStandardItem *> items;
@@ -3090,6 +3345,7 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_COREDUMP> iList, QStandardIt
  */
 void DisplayContent::setLoadState(DisplayContent::LOAD_STATE iState, bool bSearching/* = false*/)
 {
+    qCDebug(logApp) << "DisplayContent::setLoadState called";
     if (!m_spinnerWgt->isHidden()) {
         m_spinnerWgt->spinnerStop();
         m_spinnerWgt->hide();
@@ -3198,6 +3454,7 @@ void DisplayContent::setLoadState(DisplayContent::LOAD_STATE iState, bool bSearc
  */
 void DisplayContent::onExportResult(bool isSuccess)
 {
+    qCDebug(logApp) << "DisplayContent::onExportResult called";
     QString titleIcon = ICONPREFIX;
     if (m_exportDlg && !m_exportDlg->isHidden()) {
         m_exportDlg->updateProgressBarValue(0);
@@ -3211,7 +3468,11 @@ void DisplayContent::onExportResult(bool isSuccess)
         DMessageManager::instance()->sendMessage(this->window(), QIcon(titleIcon + "warning_info.svg"), DApplication::translate("ExportMessage", "Export failed"));
     }
     PERF_PRINT_END("POINT-04", "");
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     DApplication::setActiveWindow(this);
+    #else
+    this->activateWindow();
+    #endif
 }
 
 /**
@@ -3220,6 +3481,7 @@ void DisplayContent::onExportResult(bool isSuccess)
  */
 void DisplayContent::onExportFakeCloseDlg()
 {
+    qCDebug(logApp) << "DisplayContent::onExportFakeCloseDlg called";
     if (m_exportDlg && !m_exportDlg->isHidden()) {
         m_exportDlg->hide();
     }
@@ -3230,6 +3492,7 @@ void DisplayContent::onExportFakeCloseDlg()
  */
 void DisplayContent::clearAllDatas()
 {
+    qCDebug(logApp) << "DisplayContent::clearAllDatas called";
     m_detailWgt->cleanText();
     m_pModel->clear();
 
@@ -3243,12 +3506,15 @@ void DisplayContent::clearAllDatas()
  */
 void DisplayContent::onExportProgress(int nCur, int nTotal)
 {
+    qCDebug(logApp) << "DisplayContent::onExportProgress called";
     if (!m_exportDlg) {
+        qCDebug(logApp) << "m_exportDlg is null";
         return;
     }
 
     //弹窗
     if (m_exportDlg->isHidden()) {
+        qCDebug(logApp) << "m_exportDlg is hidden";
         m_exportDlg->show();
     }
 
@@ -3263,13 +3529,14 @@ void DisplayContent::onExportProgress(int nCur, int nTotal)
  */
 void DisplayContent::parseListToModel(QList<LOG_MSG_JOURNAL> iList, QStandardItemModel *oPModel)
 {
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
     if (!oPModel) {
-        qCWarning(logDisplaycontent) << "system log parse model is empty";
+        qCWarning(logApp) << "system log parse model is empty";
         return;
     }
 
     if (iList.isEmpty()) {
-        qCWarning(logDisplaycontent) << "system log parse model data is empty";
+        qCWarning(logApp) << "system log parse model data is empty";
         return;
     }
     DStandardItem *item = nullptr;
@@ -3299,6 +3566,7 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_JOURNAL> iList, QStandardIte
  */
 void DisplayContent::resizeEvent(QResizeEvent *event)
 {
+    // qCDebug(logApp) << "DisplayContent::resizeEvent called";
     Q_UNUSED(event)
     noResultLabel->resize(m_treeView->viewport()->width(), m_treeView->viewport()->height());
     notAuditLabel->resize(m_treeView->viewport()->width(), m_treeView->viewport()->height());
@@ -3311,11 +3579,13 @@ void DisplayContent::resizeEvent(QResizeEvent *event)
  */
 QString DisplayContent::getIconByname(const QString &str)
 {
+    // qCDebug(logApp) << "DisplayContent::getIconByname called";
     return m_icon_name_map.value(str);
 }
 
 void DisplayContent::createBootTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createBootTableForm called";
     m_pModel->clear();
     m_pModel->setColumnCount(2);
     m_pModel->setHorizontalHeaderLabels(QStringList() << DApplication::translate("Table", "Status")
@@ -3331,6 +3601,7 @@ void DisplayContent::createBootTableForm()
  */
 void DisplayContent::insertApplicationTable(const QList<LOG_MSG_APPLICATOIN> &list, int start, int end)
 {
+    qCDebug(logApp) << "DisplayContent::insertApplicationTable called";
     QList<LOG_MSG_APPLICATOIN> midList = list;
     if (end >= start) {
         midList = midList.mid(start, end - start);
@@ -3345,15 +3616,19 @@ void DisplayContent::insertApplicationTable(const QList<LOG_MSG_APPLICATOIN> &li
  */
 void DisplayContent::slot_refreshClicked(const QModelIndex &index)
 {
+    qCDebug(logApp) << "DisplayContent::slot_refreshClicked called";
     if (!index.isValid()) {
+        qCDebug(logApp) << "index is not valid";
         return;
     }
 
     m_curListIdx = index;
 
     QString itemData = index.data(ITEM_DATE_ROLE).toString();
-    if (itemData.isEmpty())
+    if (itemData.isEmpty()) {
+        qCDebug(logApp) << "itemData is empty";
         return;
+    }
 
     if (itemData.contains(JOUR_TREE_DATA, Qt::CaseInsensitive)) {
         // default level is info so PRIORITY=6
@@ -3426,12 +3701,14 @@ void DisplayContent::slot_refreshClicked(const QModelIndex &index)
 
 void DisplayContent::slot_dnfLevel(DNFPRIORITY iLevel)
 {
+    qCDebug(logApp) << "DisplayContent::slot_dnfLevel called";
     m_curDnfLevel = iLevel;
     generateDnfFile(BUTTONID(m_curBtnId), m_curDnfLevel);
 }
 
 void DisplayContent::generateOOCFile(const QString &path)
 {
+    qCDebug(logApp) << "DisplayContent::generateOOCFile called";
     setLoadState(DATA_LOADING);
     m_detailWgt->cleanText();
     m_isDataLoadComplete = false;
@@ -3440,6 +3717,7 @@ void DisplayContent::generateOOCFile(const QString &path)
 
 void DisplayContent::generateOOCLogs(const OOC_TYPE &type, const QString &iSearchStr/* = ""*/)
 {
+    qCDebug(logApp) << "DisplayContent::generateOOCLogs called";
     m_pLogBackend->clearAllFilter();
     clearAllDatas();
 
@@ -3474,6 +3752,7 @@ void DisplayContent::generateOOCLogs(const OOC_TYPE &type, const QString &iSearc
 
 void DisplayContent::createOOCTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createOOCTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "File Name")
@@ -3484,6 +3763,7 @@ void DisplayContent::createOOCTableForm()
 
 void DisplayContent::createOOCTable(const QList<LOG_FILE_OTHERORCUSTOM> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createOOCTable called";
     setLoadState(DATA_COMPLETE);
 
     m_limitTag = 0;
@@ -3499,6 +3779,7 @@ void DisplayContent::createOOCTable(const QList<LOG_FILE_OTHERORCUSTOM> &list)
 
 void DisplayContent::generateAuditFile(int id, int lId, const QString &iSearchStr)
 {
+    qCDebug(logApp) << "DisplayContent::generateAuditFile called";
     Q_UNUSED(iSearchStr);
 
     // 若审计日志不存在，则显示审计日志不存在
@@ -3576,6 +3857,7 @@ void DisplayContent::generateAuditFile(int id, int lId, const QString &iSearchSt
 
 void DisplayContent::createAuditTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createAuditTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "Event Type")
@@ -3601,6 +3883,7 @@ void DisplayContent::createAuditTableForm()
 
 void DisplayContent::createAuditTable(const QList<LOG_MSG_AUDIT> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createAuditTable called";
     setLoadState(DATA_COMPLETE);
 
     m_limitTag = 0;
@@ -3614,6 +3897,7 @@ void DisplayContent::createAuditTable(const QList<LOG_MSG_AUDIT> &list)
 
 void DisplayContent::generateCoredumpFile(int id, const QString &iSearchStr)
 {
+    qCDebug(logApp) << "DisplayContent::generateCoredumpFile called";
     Q_UNUSED(iSearchStr)
 
     if (!Utils::isCoredumpctlExist()) {
@@ -3683,6 +3967,7 @@ void DisplayContent::generateCoredumpFile(int id, const QString &iSearchStr)
 }
 void DisplayContent::createCoredumpTableForm()
 {
+    qCDebug(logApp) << "DisplayContent::createCoredumpTableForm called";
     m_pModel->clear();
     m_pModel->setHorizontalHeaderLabels(QStringList()
                                         << DApplication::translate("Table", "SIG")
@@ -3699,6 +3984,7 @@ void DisplayContent::createCoredumpTableForm()
 }
 void DisplayContent::createCoredumpTable(const QList<LOG_MSG_COREDUMP> &list)
 {
+    qCDebug(logApp) << "DisplayContent::createCoredumpTable called";
     setLoadState(DATA_COMPLETE);
 
     m_limitTag = 0;
@@ -3711,7 +3997,9 @@ void DisplayContent::createCoredumpTable(const QList<LOG_MSG_COREDUMP> &list)
 }
 void DisplayContent::slot_requestShowRightMenu(const QPoint &pos)
 {
+    qCDebug(logApp) << "DisplayContent::slot_requestShowRightMenu called";
     if (m_flag != OtherLog && m_flag != CustomLog && m_flag != COREDUMP) {
+        qCDebug(logApp) << "m_flag != OtherLog && m_flag != CustomLog && m_flag != COREDUMP";
         return;
     }
 
@@ -3755,6 +4043,7 @@ void DisplayContent::slot_requestShowRightMenu(const QPoint &pos)
 
 void DisplayContent::slot_valueChanged_dConfig_or_gSetting(const QString &key)
 {
+    qCDebug(logApp) << "DisplayContent::slot_valueChanged_dConfig_or_gSetting called";
     if ((key == "customLogFiles" || key == "customlogfiles") && m_flag == CustomLog) {
         generateOOCLogs(OOC_CUSTOM);
     }

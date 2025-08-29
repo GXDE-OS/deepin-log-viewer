@@ -8,7 +8,7 @@ project(logViewerTruncate)
 set (EXE_NAME logViewerTruncate)
 
 set(LINK_LIBS
-    Qt5::Core
+    Qt${QT_DESIRED_VERSION}::Core
 )
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -26,6 +26,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -z relro -z now -z noexecstack -pie")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -z relro -z now -z noexecstack -pie")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fstack-protector-all")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -fstack-protector-all")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE")
 set (AUTH_CPP_FILES
         main.cpp
     )
@@ -34,7 +37,8 @@ add_executable (${EXE_NAME}
 )
 
 # Find the library
-find_package(Qt5Core REQUIRED)
+# find_package(Qt5Core REQUIRED)
+find_package(Qt${QT_DESIRED_VERSION} REQUIRED COMPONENTS Core)
 set(CMAKE_INSTALL_PREFIX /usr)
 # Install files
 install(TARGETS ${EXE_NAME} DESTINATION bin)

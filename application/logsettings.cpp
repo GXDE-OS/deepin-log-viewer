@@ -4,12 +4,17 @@
 
 #include "logsettings.h"
 #include "utils.h"
+#include "qtcompat.h"
 
 #include <QStandardPaths>
 #include <QApplication>
 #include <QDir>
 #include <QDebug>
 #include <QDateTime>
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(logApp)
+
 #define MAINWINDOW_HEIGHT_NAME "logMainWindowHeightName"
 #define MAINWINDOW_WIDTH_NAME "logMainWindowWidthName"
 
@@ -30,8 +35,11 @@ LogSettings::LogSettings(QObject *parent)
       m_configPath(""),
       m_logDirPath("")
 {
+    qCDebug(logApp) << "Initializing log settings, config path:" << Utils::getConfigPath();
+
     QDir infoPath(Utils::getConfigPath());
     if (!infoPath.exists()) {
+        qCDebug(logApp) << "Info path does not exist, creating it";
         infoPath.mkpath(Utils::getConfigPath());
     }
 
@@ -48,22 +56,25 @@ LogSettings::LogSettings(QObject *parent)
  */
 QSize LogSettings::getConfigWinSize()
 {
+    qCDebug(logApp) << "Getting configured window size";
+
     QVariant tempHeight = m_winInfoConfig->value(MAINWINDOW_HEIGHT_NAME);
     QVariant tempWidth = m_winInfoConfig->value(MAINWINDOW_WIDTH_NAME);
     int winHeight = MAINWINDOW_HEIGHT;
     int winWidth = MAINWINDOW_WIDTH;
     if (tempHeight.isValid()) {
-
+        qCDebug(logApp) << "tempHeight is valid";
         winHeight = tempHeight.toInt();
         winHeight = winHeight > MAINWINDOW_HEIGHT ? winHeight : MAINWINDOW_HEIGHT;
     }
     if (tempHeight.isValid()) {
-
+        qCDebug(logApp) << "tempWidth is valid";
         winWidth = tempWidth.toInt();
         winWidth = winWidth > MAINWINDOW_WIDTH ? winWidth : MAINWINDOW_WIDTH;
     }
 
-    return  QSize(winWidth, winHeight);
+    qCDebug(logApp) << "Returning window size:" << QSize(winWidth, winHeight);
+    return QSize(winWidth, winHeight);
 }
 
 /**
@@ -73,6 +84,8 @@ QSize LogSettings::getConfigWinSize()
  */
 void LogSettings::saveConfigWinSize(int w, int h)
 {
+    qCDebug(logApp) << "Saving window size:" << w << "x" << h;
+
     int winWidth = w > MAINWINDOW_WIDTH ? w : MAINWINDOW_WIDTH;
     int winHeight = h > MAINWINDOW_HEIGHT ? h : MAINWINDOW_HEIGHT;
     m_winInfoConfig->setValue(MAINWINDOW_HEIGHT_NAME, winHeight);
@@ -82,14 +95,17 @@ void LogSettings::saveConfigWinSize(int w, int h)
 
 QMap<QString, QStringList> LogSettings::loadAuditMap()
 {
+    qCDebug(logApp) << "Loading audit rules from:" << AUDIT_CONFIG_PATH;
+
     QMap<QString, QStringList> auditType2EventType;
     QSettings auditConfig(AUDIT_CONFIG_PATH, QSettings::IniFormat);
     QStringList auditTypes = auditConfig.childKeys();
     for (auto auditType : auditTypes) {
         QString value = auditConfig.value(auditType).toString();
-        QStringList strList = value.split('@', QString::SkipEmptyParts);
+        QStringList strList = value.split('@', SKIP_EMPTY_PARTS);
         auditType2EventType.insert(auditType, strList);
     }
 
+    qCDebug(logApp) << "Loaded" << auditType2EventType.size() << "audit rules";
     return auditType2EventType;
 }

@@ -8,7 +8,8 @@
 #include "logviewitemdelegate.h"
 
 #include <DApplication>
-#include <DApplicationHelper>
+#include <DGuiApplicationHelper>
+#include <DPaletteHelper>
 #include <DStyledItemDelegate>
 #include <DStyle>
 
@@ -26,11 +27,16 @@
 //#include <qpa/qplatformtheme.h>
 #include <QTouchEvent>
 #include <QPainterPath>
+#include <QLoggingCategory>
+
 DWIDGET_USE_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 LogTreeView::LogTreeView(QWidget *parent)
     : DTreeView(parent)
 {
+    qInfo() << "LogTreeView constructor initialized";
     initUI();
     connect(this->verticalScrollBar(), &QScrollBar::sliderPressed, this, [ = ] {
         if (QScroller::hasScroller(this))
@@ -45,13 +51,18 @@ LogTreeView::LogTreeView(QWidget *parent)
 
 int LogTreeView::singleRowHeight()
 {
+    qCDebug(logApp) << "Getting single row height";
     if (this->model() == nullptr) {
+        qCWarning(logApp) << "Model is null, returning -1";
         return -1;
     }
     QModelIndex firstIndex = this->model()->index(0, 0);
     if (firstIndex.isValid()) {
-        return  this->rowHeight(firstIndex);
+        int height = this->rowHeight(firstIndex);
+        qCDebug(logApp) << "Single row height:" << height;
+        return height;
     } else {
+        qCWarning(logApp) << "First index is invalid, returning -1";
         return -1;
     }
 
@@ -62,6 +73,7 @@ int LogTreeView::singleRowHeight()
  */
 void LogTreeView::initUI()
 {
+    qInfo() << "Initializing LogTreeView UI components";
     m_itemDelegate = new LogViewItemDelegate(this);
     setItemDelegate(m_itemDelegate);
 
@@ -92,6 +104,7 @@ void LogTreeView::initUI()
  */
 void LogTreeView::paintEvent(QPaintEvent *event)
 {
+    // qCDebug(logApp) << "LogTreeView paintEvent";
     QPainter painter(viewport());
     painter.save();
     painter.setRenderHints(QPainter::Antialiasing);
@@ -101,11 +114,13 @@ void LogTreeView::paintEvent(QPaintEvent *event)
     QWidget *wnd = DApplication::activeWindow();
     DPalette::ColorGroup cg;
     if (!wnd) {
+        // qCDebug(logApp) << "Window is not active";
         cg = DPalette::Inactive;
     } else {
+        // qCDebug(logApp) << "Window is active";
         cg = DPalette::Active;
     }
-    auto *dAppHelper = DApplicationHelper::instance();
+    auto *dAppHelper = DGuiApplicationHelper::instance();
     auto palette = dAppHelper->applicationPalette();
     QBrush bgBrush(palette.color(cg, DPalette::Base));
     //绘制背景
@@ -129,6 +144,7 @@ void LogTreeView::paintEvent(QPaintEvent *event)
  */
 void LogTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &options, const QModelIndex &index) const
 {
+    // qCDebug(logApp) << "LogTreeView drawRow";
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
@@ -137,19 +153,24 @@ void LogTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &options
 #endif
     DPalette::ColorGroup cg;
     if (!(options.state & DStyle::State_Enabled)) {
+        // qCDebug(logApp) << "State is disabled";
         cg = DPalette::Disabled;
     } else {
 #ifdef ENABLE_INACTIVE_DISPLAY
         if (!wnd) {
+            // qCDebug(logApp) << "Window is not active";
             cg = DPalette::Inactive;
         } else {
             if (wnd->isModal()) {
+                // qCDebug(logApp) << "Window is modal";
                 cg = DPalette::Inactive;
             } else {
+                // qCDebug(logApp) << "Window is active";
                 cg = DPalette::Active;
             }
         }
 #else
+        // qCDebug(logApp) << "Window is active";
         cg = DPalette::Active;
 #endif
     }
@@ -162,13 +183,16 @@ void LogTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &options
     auto palette = options.palette;
     QBrush background;
     if (!(index.row() & 1)) {
-        auto dpa = DApplicationHelper::instance()->palette(this);
+        // qCDebug(logApp) << "Row is even";
+        auto dpa = DPaletteHelper::instance()->palette(this);
         background = dpa.color(DPalette::ItemBackground);
     } else {
+        // qCDebug(logApp) << "Row is odd";
         background = palette.color(cg, DPalette::Base);
     }
     if (options.state & DStyle::State_Enabled) {
         if (selectionModel()->isSelected(index)) {
+            // qCDebug(logApp) << "Row is selected";
             background = palette.color(cg, DPalette::Highlight);
         }
     }
@@ -188,6 +212,7 @@ void LogTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &options
     QTreeView::drawRow(painter, options, index);
     // draw focus
     if (hasFocus() && currentIndex().row() == index.row() && (m_reson == Qt::TabFocusReason || m_reson == Qt::BacktabFocusReason)) {
+        // qCDebug(logApp) << "Drawing focus rect";
         QStyleOptionFocusRect o;
         o.QStyleOption::operator=(options);
         o.state |= QStyle::State_KeyboardFocusChange | QStyle::State_HasFocus;
@@ -204,34 +229,54 @@ void LogTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &options
  */
 void LogTreeView::keyPressEvent(QKeyEvent *event)
 {
+    // qCDebug(logApp) << "LogTreeView key press event, key:" << event->key();
     DTreeView::keyPressEvent(event);
     if (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down) {
+        // qCDebug(logApp) << "Arrow key pressed, emitting pressed signal";
         emit pressed(this->currentIndex());
     }
 }
 
+
 bool LogTreeView::event(QEvent *e)
 {
+    // qCDebug(logApp) << "LogTreeView event";
     if (e->type() == QEvent::TouchBegin) {
+        // qCDebug(logApp) << "Touch begin event detected";
         QTouchEvent *touchEvent = static_cast<QTouchEvent *>(e);
-        if (!m_isPressed && touchEvent && touchEvent->device() && touchEvent->device()->type() == QTouchDevice::TouchScreen && touchEvent->touchPointStates() == Qt::TouchPointPressed) {
-            QList<QTouchEvent::TouchPoint> points = touchEvent->touchPoints();
-            //dell触摸屏幕只有一个touchpoint 但却能捕获到pinchevent缩放手势?
-            if (points.count() == 1) {
-                QTouchEvent::TouchPoint p = points.at(0);
-                m_lastTouchBeginPos =  p.pos();
-                m_lastTouchTime = QTime::currentTime();
-                m_isPressed = true;
-
+        if (!m_isPressed && touchEvent) {
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+            if (touchEvent->device() && touchEvent->device()->type() == QTouchDevice::TouchScreen) {
+                QList<QTouchEvent::TouchPoint> points = touchEvent->touchPoints();
+            
+#else
+            if (touchEvent->deviceType() == QInputDevice::DeviceType::TouchScreen) {
+                QList<QTouchEvent::TouchPoint> points = touchEvent->points();
+#endif
+                // qCDebug(logApp) << "Touch screen detected with" << points.count() << "touch points";
+                //dell触摸屏幕只有一个touchpoint 但却能捕获到pinchevent缩放手势?
+                if (points.count() == 1) {
+                    QTouchEvent::TouchPoint p = points.at(0);
+                    #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+                    m_lastTouchBeginPos = p.pos();
+                    #else
+                    m_lastTouchBeginPos = p.position();
+                    #endif
+                    m_lastTouchTime = QTime::currentTime();
+                    m_isPressed = true;
+                    // qCDebug(logApp) << "Single touch point registered, position:" << m_lastTouchBeginPos;
+                }
             }
         }
     }
-    return  DTreeView::event(e);
+    return DTreeView::event(e);
 }
 
 void LogTreeView::mouseMoveEvent(QMouseEvent *event)
 {
+    // qCDebug(logApp) << "LogTreeView mouse move event";
     if (m_isPressed) {
+        // qCDebug(logApp) << "Touch move event while pressed";
         //最小距离为防误触和双向滑动时,只触发横向或者纵向的
         int touchmindistance = 2;
         //最大步进距离是因为原地点按马上放开,则会出现-35~-38的不合理位移,加上每次步进距离没有那么大,所以设置为30
@@ -240,10 +285,12 @@ void LogTreeView::mouseMoveEvent(QMouseEvent *event)
         double horiDelta = event->pos().x() - m_lastTouchBeginPos.x();
         double vertDelta = event->pos().y() - m_lastTouchBeginPos.y();
         if (qAbs(horiDelta) > touchmindistance && qAbs(horiDelta) < touchMaxDistance) {
+            // qCDebug(logApp) << "Horizontal scroll delta:" << horiDelta;
             horizontalScrollBar()->setValue(static_cast<int>(horizontalScrollBar()->value() - horiDelta)) ;
         }
 
         if (qAbs(vertDelta) > touchmindistance && !(qAbs(vertDelta) < header()->height() + 2 && qAbs(vertDelta) > header()->height() - 2 && m_lastTouchTime.msecsTo(QTime::currentTime()) < 100)) {
+            // qCDebug(logApp) << "Vertical scroll delta:" << vertDelta;
             verticalScrollBar()->setValue(static_cast<int>(verticalScrollBar()->value() - vertDelta));
         }
         m_lastTouchBeginPos = event->pos();
@@ -254,7 +301,9 @@ void LogTreeView::mouseMoveEvent(QMouseEvent *event)
 
 void LogTreeView::mouseReleaseEvent(QMouseEvent *event)
 {
+    // qCDebug(logApp) << "LogTreeView mouse release event";
     if (m_isPressed) {
+        // qCDebug(logApp) << "Touch released";
         m_isPressed = false;
         return;
     }
@@ -263,6 +312,7 @@ void LogTreeView::mouseReleaseEvent(QMouseEvent *event)
 
 void LogTreeView::focusInEvent(QFocusEvent *event)
 {
+    // qCDebug(logApp) << "LogTreeView focus in event, reason:" << event->reason();
     m_reson = event->reason();
     DTreeView::focusInEvent(event);
 }

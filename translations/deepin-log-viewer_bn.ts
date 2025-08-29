@@ -1,613 +1,759 @@
-<?xml version="1.0" ?><!DOCTYPE TS><TS version="2.1" language="bn">
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="bn">
 <context>
     <name>Action</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="188"/>
         <source>Display in file manager</source>
-        <translation type="unfinished"/>
+        <translation>ফাইল ম্যানেজারে প্রদর্শন</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="489"/>
         <source>Clear log</source>
-        <translation type="unfinished"/>
+        <translation>লগ নির্দিষ্ট করুন</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="189"/>
         <source>Refresh</source>
-        <translation type="unfinished"/>
+        <translation>পরিবর্তন পরিসংখ্যান</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="539"/>
         <source>Are you sure you want to clear the log?</source>
-        <translation type="unfinished"/>
+        <translation>আপনি কি লগ নির্দিষ্ট করতে চান?</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="540"/>
         <source>Cancel</source>
-        <translation type="unfinished"/>
+        <translation>বন্ধ করুন</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="541"/>
         <source>Confirm</source>
-        <translation type="unfinished"/>
+        <translation>প্রতিষ্ঠিত করুন</translation>
     </message>
 </context>
 <context>
     <name>Button</name>
     <message>
+        <location filename="../application/filtercontent.cpp" line="80"/>
         <source>All</source>
-        <translation type="unfinished"/>
+        <translation>সব</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="83"/>
         <source>Today</source>
-        <translation type="unfinished"/>
+        <translation>আজ</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="86"/>
         <source>3 days</source>
-        <translation type="unfinished"/>
+        <translation>3 দিন</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="89"/>
         <source>1 week</source>
-        <translation type="unfinished"/>
+        <translation>1 সপ্তাহ</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="92"/>
         <source>1 month</source>
-        <translation type="unfinished"/>
+        <translation>1 মাস</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="95"/>
         <source>3 months</source>
-        <translation type="unfinished"/>
+        <translation>3 মাস</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="224"/>
         <source>Export</source>
         <comment>button</comment>
-        <translation type="unfinished"/>
+        <translation>eksport করুন</translation>
     </message>
 </context>
 <context>
     <name>ComboBox</name>
     <message>
+        <location filename="../application/filtercontent.cpp" line="120"/>
         <source>All</source>
-        <translation type="unfinished"/>
+        <translation>সব</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="121"/>
         <source>Emergency</source>
-        <translation type="unfinished"/>
+        <translation>চিকিৎসা</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="122"/>
         <source>Alert</source>
-        <translation type="unfinished"/>
+        <translation>অবস্থানোচ্চান</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="123"/>
         <source>Critical</source>
-        <translation type="unfinished"/>
+        <translation>ক্রিটিক্যাল</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="124"/>
         <source>Error</source>
-        <translation type="unfinished"/>
+        <translation>গোল্ডের</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="125"/>
         <source>Warning</source>
-        <translation type="unfinished"/>
+        <translation>প্রতিবেদন</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="126"/>
         <source>Notice</source>
-        <translation type="unfinished"/>
+        <translation>নোটিশ</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="127"/>
         <source>Info</source>
-        <translation type="unfinished"/>
+        <translation>আর্থিক</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="128"/>
         <source>Debug</source>
-        <translation type="unfinished"/>
+        <translation>ডিবাগ</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="198"/>
         <source>Login</source>
-        <translation type="unfinished"/>
+        <translation>লগইন</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="199"/>
         <source>Boot</source>
-        <translation type="unfinished"/>
+        <translation>বুট</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="200"/>
         <source>Shutdown</source>
-        <translation type="unfinished"/>
+        <translation>শোডাউট</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="142"/>
         <source>Super critical</source>
-        <translation type="unfinished"/>
+        <translation>সুপার ক্রিটিক্যাল</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="148"/>
         <source>Trace</source>
-        <translation type="unfinished"/>
+        <translation>ট্রেইস</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="212"/>
         <source>Identity authentication</source>
-        <translation type="unfinished"/>
+        <translation>ইন্ডেন্টিটি আউথেন্টিকেশন</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="213"/>
         <source>Discretionary Access Control</source>
-        <translation type="unfinished"/>
+        <translation>অ্যারেটরি অ্যাক্সেস কন্ট্রোল</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="214"/>
         <source>Mandatory access control</source>
-        <translation type="unfinished"/>
+        <translation>অবশ্যক অ্যাক্সেস কন্ট্রোল</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="215"/>
         <source>Remote</source>
-        <translation type="unfinished"/>
+        <translation>ডিস্ট্রিবিউটেড</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="216"/>
         <source>Document audit</source>
-        <translation type="unfinished"/>
+        <translation>দক্ষিণাংশ পরীক্ষা</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="217"/>
         <source>Other</source>
-        <translation type="unfinished"/>
+        <translation>অন্যান্য</translation>
     </message>
 </context>
 <context>
     <name>DisplayContent</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1800"/>
         <source>zip(*.zip)</source>
-        <translation type="unfinished"/>
+        <translation>zip(*.zip</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1794"/>
         <source>TEXT (*.txt);; Doc (*.doc);; Xls (*.xls);; Html (*.html)</source>
-        <translation type="unfinished"/>
+        <translation>TEXT (*.txt);; Doc (*.doc);; Xls (*.xls);; Html (*.html</translation>
     </message>
 </context>
 <context>
     <name>ExportDlg</name>
     <message>
+        <location filename="../application/exportprogressdlg.cpp" line="35"/>
         <source>Exporting...</source>
-        <translation type="unfinished"/>
+        <translation>eksপোর্ট হচ্ছে...</translation>
     </message>
     <message>
+        <location filename="../application/exportprogressdlg.cpp" line="58"/>
         <source>Cancel</source>
-        <translation type="unfinished"/>
+        <translation>বাতিল করুন</translation>
     </message>
 </context>
 <context>
     <name>ExportMessage</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3257"/>
         <source>Export successful</source>
-        <translation type="unfinished"/>
+        <translation>eksপোর্ট সফল</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3260"/>
         <source>Export failed</source>
-        <translation type="unfinished"/>
+        <translation>eksপোর্ট ব্যর্থ</translation>
     </message>
     <message>
+        <location filename="../application/logbackend.cpp" line="1763"/>
         <source>The export directory is not available. Please choose another directory for the export operation.</source>
-        <translation type="unfinished"/>
+        <translation>eksপোর্ট ফাইলের পথ উপযোগী নয়। একটি অন্যান্য ফাইল পথ উপর একটি বিকল্প নির্বাচন করুন।</translation>
     </message>
 </context>
 <context>
     <name>File</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1792"/>
         <source>Export File</source>
-        <translation type="unfinished"/>
+        <translation>eksপোর্ট ফাইল</translation>
     </message>
 </context>
 <context>
     <name>Label</name>
     <message>
+        <location filename="../application/filtercontent.cpp" line="76"/>
         <source>Period:</source>
-        <translation type="unfinished"/>
+        <translation>সময়কাল:</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="114"/>
         <source>Level:  </source>
-        <translation type="unfinished"/>
+        <translation>মাত্রা:  </translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="180"/>
         <source>Status:</source>
-        <translation type="unfinished"/>
+        <translation>অবস্থান:</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="193"/>
         <source>Event Type:</source>
-        <translation type="unfinished"/>
+        <translation>সরকারি ধরন:</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="132"/>
         <source>User:</source>
-        <translation type="unfinished"/>
+        <translation>ব্যবহারকারী:</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="134"/>
         <source>PID:</source>
-        <translation type="unfinished"/>
+        <translation>PID:</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="138"/>
         <source>Action:</source>
-        <translation type="unfinished"/>
+        <translation>পদকর্তা:</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="143"/>
         <source>Username:</source>
-        <translation type="unfinished"/>
+        <translation>ব্যবহারকারী নাম:</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="469"/>
         <source>Boot record</source>
-        <translation type="unfinished"/>
+        <translation>প্রোগ্রাম রেকর্ড</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="471"/>
         <source>Shutdown record</source>
-        <translation type="unfinished"/>
+        <translation>শ্লোডাউন রেকর্ড</translation>
     </message>
     <message>
+        <location filename="../application/logdetailinfowidget.cpp" line="474"/>
         <source>Login record</source>
-        <translation type="unfinished"/>
+        <translation>লগইন রেকর্ড</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="208"/>
         <source>Audit Type:</source>
-        <translation type="unfinished"/>
+        <translation>অ্যায়ুডিট টাইপ:</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="155"/>
         <source>Application:</source>
-        <translation type="unfinished"/>
+        <translation>এ্যাপ্লিকেশন:</translation>
     </message>
     <message>
+        <location filename="../application/filtercontent.cpp" line="167"/>
         <source>Submodule:</source>
-        <translation type="unfinished"/>
+        <translation>সুবাউইলিউট:</translation>
     </message>
 </context>
 <context>
     <name>Level</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="201"/>
         <source>Warning</source>
-        <translation type="unfinished"/>
+        <translation>প্রতিজ্ঞা</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="202"/>
         <source>Debug</source>
-        <translation type="unfinished"/>
+        <translation>ডেব্গ্রেস</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="203"/>
         <source>Info</source>
-        <translation type="unfinished"/>
+        <translation>আইনফো</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="204"/>
         <source>Error</source>
-        <translation type="unfinished"/>
+        <translation>ইরর</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="208"/>
         <source>Emergency</source>
-        <translation type="unfinished"/>
+        <translation>চিন্তাজনক</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="209"/>
         <source>Alert</source>
-        <translation type="unfinished"/>
+        <translation>অ্যালেট</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="210"/>
         <source>Critical</source>
-        <translation type="unfinished"/>
+        <translation>ক্রিটিক্যাল</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="213"/>
         <source>Notice</source>
-        <translation type="unfinished"/>
+        <translation>নোটিস</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="220"/>
         <source>Trace</source>
-        <translation type="unfinished"/>
+        <translation>ট্রেস</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="226"/>
         <source>Super critical</source>
-        <translation type="unfinished"/>
+        <translation>সুপার ক্রিটিক্যাল</translation>
     </message>
 </context>
 <context>
     <name>LogAuthThread</name>
     <message>
+        <location filename="../application/logauththread.cpp" line="529"/>
         <source>Log file is empty</source>
-        <translation type="unfinished"/>
+        <translation>লগ ফাইল খালি</translation>
     </message>
 </context>
 <context>
     <name>Main</name>
     <message>
+        <location filename="../application/main.cpp" line="329"/>
         <source>Log Viewer</source>
-        <translation type="unfinished"/>
+        <translation>লগ ভিউয়ার</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="332"/>
         <source>Log Viewer is a useful tool for viewing system logs.</source>
-        <translation type="unfinished"/>
+        <translation>লগ ভিউয়ার একটি সুবিধাজনক উপকরণ যা সিস্টেম লগগুলি দেখতে ব্যবহার করা যায়।</translation>
     </message>
 </context>
 <context>
     <name>SearchBar</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="120"/>
         <source>No search results</source>
-        <translation type="unfinished"/>
+        <translation>নাই সার্চ রিজাল্টস</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="109"/>
         <source>Search</source>
-        <translation type="unfinished"/>
+        <translation>সার্চ</translation>
     </message>
 </context>
 <context>
     <name>Table</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="563"/>
         <source>Level</source>
-        <translation type="unfinished"/>
+        <translation>লেভেল</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="564"/>
         <source>Process</source>
-        <translation type="unfinished"/>
+        <translation>প্রক্রেস</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="565"/>
         <source>Date and Time</source>
-        <translation type="unfinished"/>
+        <translation>তারিখ এবং সময়</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="566"/>
         <source>Info</source>
-        <translation type="unfinished"/>
+        <translation>আইনফো</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="567"/>
         <source>User</source>
-        <translation type="unfinished"/>
+        <translation>ব্যবহারকারী</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="568"/>
         <source>PID</source>
-        <translation type="unfinished"/>
+        <translation>প্রক্রিয়া ইড</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="953"/>
         <source>Source</source>
-        <translation type="unfinished"/>
+        <translation>সোর্স</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="669"/>
         <source>Action</source>
-        <translation type="unfinished"/>
+        <translation>প্রচেষ্টা</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3374"/>
         <source>Status</source>
-        <translation type="unfinished"/>
+        <translation>অবস্থা</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1140"/>
         <source>Event Type</source>
-        <translation type="unfinished"/>
+        <translation>সংস্করণ ধরন</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1141"/>
         <source>Username</source>
-        <translation type="unfinished"/>
+        <translation>নাম</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="897"/>
         <source>Level:</source>
-        <translation type="unfinished"/>
+        <translation>মাত্রা:</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="898"/>
         <source>Process:</source>
-        <translation type="unfinished"/>
+        <translation>প্রক্রিয়া:</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="899"/>
         <source>Date and Time:</source>
-        <translation type="unfinished"/>
+        <translation>তারিখ এবং সময়:</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="901"/>
         <source>Info:</source>
-        <translation type="unfinished"/>
+        <translation>মেজর ডিটেইলস:</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="902"/>
         <source>Null</source>
-        <translation type="unfinished"/>
+        <translation>কোনো তথ্য নেই</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="906"/>
         <source>User:</source>
-        <translation type="unfinished"/>
+        <translation>ব্যবহারকারী:</translation>
     </message>
     <message>
+        <location filename="../application/logexportthread.cpp" line="907"/>
         <source>PID:</source>
-        <translation type="unfinished"/>
+        <translation>প্রক্রিয়া ইড:</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3532"/>
         <source>File Name</source>
-        <translation type="unfinished"/>
+        <translation>ফাইল নাম</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3533"/>
         <source>Time Modified</source>
-        <translation type="unfinished"/>
+        <translation>সময় পরিবর্তন</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3741"/>
         <source>SIG</source>
-        <translation type="unfinished"/>
+        <translation>সিজ</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3745"/>
         <source>EXE</source>
-        <translation type="unfinished"/>
+        <translation>এক্সে</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3743"/>
         <source>Core File</source>
-        <translation type="unfinished"/>
+        <translation>কোর ফাইল</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="3744"/>
         <source>User Name </source>
-        <translation type="unfinished"/>
+        <translation>ব্যবহারকারী নাম </translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1009"/>
         <source>Offset</source>
-        <translation type="unfinished"/>
+        <translation>অফসেট</translation>
     </message>
 </context>
 <context>
     <name>Tbble</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="1142"/>
         <source>Date and Time</source>
-        <translation type="unfinished"/>
+        <translation>তারিখ এবং সময়</translation>
     </message>
 </context>
 <context>
     <name>Tree</name>
     <message>
+        <location filename="../application/loglistview.cpp" line="171"/>
         <source>System Log</source>
-        <translation type="unfinished"/>
+        <translation>সিস্টেম লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="182"/>
         <source>Kernel Log</source>
-        <translation type="unfinished"/>
+        <translation>কার্নেল লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="203"/>
         <source>Boot Log</source>
-        <translation type="unfinished"/>
+        <translation>প্রোগ্রাম লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="232"/>
         <source>dpkg Log</source>
-        <translation type="unfinished"/>
+        <translation>ডিপক্স লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="244"/>
         <source>Kwin Log</source>
-        <translation type="unfinished"/>
+        <translation>Kwin লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="253"/>
         <source>Xorg Log</source>
-        <translation type="unfinished"/>
+        <translation>Xorg লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="265"/>
         <source>Application Log</source>
-        <translation type="unfinished"/>
+        <translation>প্রোগ্রাম লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="290"/>
         <source>Boot-Shutdown Event</source>
-        <translation type="unfinished"/>
+        <translation>প্রোগ্রাম লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="222"/>
         <source>dnf Log</source>
-        <translation type="unfinished"/>
+        <translation>dnf লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="303"/>
         <source>Other Log</source>
-        <translation type="unfinished"/>
+        <translation>অন্যান্য লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="339"/>
         <source>Custom Log</source>
-        <translation type="unfinished"/>
+        <translation>মূল্যায়ন লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="319"/>
         <source>Audit Log</source>
-        <translation type="unfinished"/>
+        <translation>মন্তব্য লগ</translation>
     </message>
     <message>
+        <location filename="../application/loglistview.cpp" line="278"/>
         <source>Coredump Log</source>
-        <translation type="unfinished"/>
+        <translation>করড় ডাউম লগ</translation>
     </message>
 </context>
 <context>
     <name>Waring</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="133"/>
         <source>Unable to obtain crash information, please install systemd-coredump.</source>
-        <translation type="unfinished"/>
+        <translation>অ্যাক্সেস হত্তয়া সম্পর্কে তথ্য পাওয়া যায়নি, ক্ষমা করুন, সিস্টেম্ডিউ-করড়-ডাউম ইনস্টল করুন</translation>
     </message>
 </context>
 <context>
     <name>Warning</name>
     <message>
+        <location filename="../application/displaycontent.cpp" line="139"/>
         <source>You do not have permission to view it</source>
-        <translation type="unfinished"/>
+        <translation>আপনার এটি দেখার অনুমোদন নেই</translation>
     </message>
     <message>
+        <location filename="../application/displaycontent.cpp" line="127"/>
         <source>Security level for the current system: high
  audit only administrators can view the audit log</source>
-        <translation type="unfinished"/>
+        <translation>বর্তমান সিস্টেমের উপর নির্ণয় স্তর: উচ্চ
+মন্তব্য লগ দেখতে কেবল পরিচালকদের অনুমোদন আছে</translation>
+    </message>
+    <message>
+        <location filename="../application/displaycontent.cpp" line="3216"/>
+        <source>Audit log is not exist.</source>
+        <translation>অডিট লগ অস্তিত্ব নেই।</translation>
     </message>
 </context>
 <context>
     <name>main</name>
     <message>
+        <location filename="../application/main.cpp" line="67"/>
         <source>Export logs to the specified path</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত পথে লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="67"/>
         <source>PATH</source>
-        <translation type="unfinished"/>
+        <translation>পথ</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="68"/>
         <source>Export logs of specified types</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত ধরনের লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="68"/>
         <source>TYPE</source>
-        <translation type="unfinished"/>
+        <translation>ধরন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="69"/>
         <source>Export logs of specified self-developed applications</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত নিজের উন্নয়ন করা প্রোগ্রামের লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="69"/>
         <source>SELF APPNAME</source>
-        <translation type="unfinished"/>
+        <translation>নিজের প্রোগ্রামের নাম</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="70"/>
         <source>Export logs within a specified time period</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত সময় অন্তর্গত লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="70"/>
         <source>PERIOD</source>
-        <translation type="unfinished"/>
+        <translation>অন্তর্গত সময়</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="71"/>
         <source>Export logs within a specified debug level</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত ডিবাগ স্তর অন্তর্গত লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="71"/>
         <source>LEVEL</source>
-        <translation type="unfinished"/>
+        <translation>স্তর</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="72"/>
         <source>BOOT STATUS</source>
-        <translation type="unfinished"/>
+        <translation>বুট স্থিতি</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="72"/>
         <source>Export boot(no-klu) logs within a specified status</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত স্থিতিতে বুট (no-klu) লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="73"/>
         <source>Export boot-shutdown-event or audit logs within a specified event type</source>
-        <translation type="unfinished"/>
+        <translation>প্রদত্ত ঘটনার ধরনে বুট-শুটাউপ-ইভেন্ট বা মন্তব্য লগ প্রকাশ করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="73"/>
         <source>EVENT TYPE</source>
-        <translation type="unfinished"/>
+        <translation>EVENT TYPE</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="74"/>
         <source>Export logs based on keywords search results</source>
-        <translation type="unfinished"/>
+        <translation>কয়েরো শব্দ খোজের ফলাফল অনুযায়ী লগ এক্সপোর্ট করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="74"/>
         <source>KEY WORD</source>
-        <translation type="unfinished"/>
+        <translation>KEY WORD</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="76"/>
         <source>Report coredump informations.</source>
-        <translation type="unfinished"/>
+        <translation>রিপোর্ট করড়েডমপ তথ্য।</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="75"/>
         <source>Export logs based on app submodel</source>
-        <translation type="unfinished"/>
+        <translation>সপ্লামডেল অনুযায়ী লগ এক্সপোর্ট করুন</translation>
     </message>
     <message>
+        <location filename="../application/main.cpp" line="75"/>
         <source>SUBMODULE</source>
-        <translation type="unfinished"/>
+        <translation>SUBMODULE</translation>
     </message>
 </context>
 <context>
     <name>titlebar</name>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="202"/>
         <source>Refresh interval</source>
-        <translation type="unfinished"/>
+        <translation>রিফ্রেশ অন্তরাল</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="204"/>
         <source>10 sec</source>
-        <translation type="unfinished"/>
+        <translation>10 সেকেন্ড</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="205"/>
         <source>1 min</source>
-        <translation type="unfinished"/>
+        <translation>1 মিনিট</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="206"/>
         <source>5 min</source>
-        <translation type="unfinished"/>
+        <translation>5 মিনিট</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="207"/>
         <source>No refresh</source>
-        <translation type="unfinished"/>
+        <translation>না রিফ্রেশ</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="234"/>
         <source>Export All</source>
-        <translation type="unfinished"/>
+        <translation>সব এক্সপোর্ট করুন</translation>
     </message>
     <message>
+        <location filename="../application/logcollectormain.cpp" line="240"/>
         <source>Refresh Now</source>
-        <translation type="unfinished"/>
+        <translation>এখন রিফ্রেশ করুন</translation>
     </message>
 </context>
 </TS>

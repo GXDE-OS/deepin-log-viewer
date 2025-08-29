@@ -4,6 +4,7 @@
 
 #include "journalwork.h"
 #include "utils.h"
+#include "qtcompat.h"
 
 #include <DApplication>
 
@@ -15,11 +16,7 @@
 #include <QProcess>
 #include <QLoggingCategory>
 
-#ifdef QT_DEBUG
-Q_LOGGING_CATEGORY(logJournal, "org.deepin.log.viewer.parse.system.journal.work")
-#else
-Q_LOGGING_CATEGORY(logJournal, "org.deepin.log.viewer.parse.system.journal.work", QtInfoMsg)
-#endif
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 DWIDGET_USE_NAMESPACE
 
@@ -36,20 +33,24 @@ journalWork::journalWork(QStringList arg, QObject *parent)
        QRunnable()
 
 {
+    qCDebug(logApp) << "journalWork constructor called with args:" << arg;
     //注册QList<LOG_MSG_JOURNAL>类型以让信号可以发出数据并能连接信号槽
     qRegisterMetaType<QList<LOG_MSG_JOURNAL> >("QList<LOG_MSG_JOURNAL>");
-    //使用线程池启动该线程，跑完自己删自己
+    //使用线程池启动该线程，由父对象管理生命周期
     setAutoDelete(true);
     //初始化等级数字对应显示文本的map
     initMap();
     //增加获取参数
     m_arg.append("-o");
     m_arg.append("json");
-    if (!arg.isEmpty())
+    if (!arg.isEmpty()) {
         m_arg.append(arg);
+        qCDebug(logApp) << "Added journal filter args:" << arg;
+    }
     //静态计数变量加一并赋值给本对象的成员变量，以供外部判断是否为最新线程发出的数据信号
     thread_index++;
     m_threadIndex = thread_index;
+    qCDebug(logApp) << "Thread index set to:" << m_threadIndex;
 }
 
 /**
@@ -61,11 +62,13 @@ journalWork::journalWork(QObject *parent)
        QRunnable()
 
 {
+    qCDebug(logApp) << "journalWork default constructor called";
     qRegisterMetaType<QList<LOG_MSG_JOURNAL> >("QList<LOG_MSG_JOURNAL>");
     initMap();
     setAutoDelete(true);
     thread_index++;
     m_threadIndex = thread_index;
+    qCDebug(logApp) << "Thread index set to:" << m_threadIndex;
 }
 
 /**
@@ -73,8 +76,10 @@ journalWork::journalWork(QObject *parent)
  */
 journalWork::~journalWork()
 {
+    qCDebug(logApp) << "journalWork destructor called";
     logList.clear();
     m_map.clear();
+    qCDebug(logApp) << "Cleaned up journalWork resources";
 }
 
 /**
@@ -82,7 +87,7 @@ journalWork::~journalWork()
  */
 void journalWork::stopWork()
 {
-    qCDebug(logJournal) << "stopWork";
+    qCDebug(logApp) << "journalWork::stopWork called";
     m_canRun = false;
 }
 
@@ -92,6 +97,7 @@ void journalWork::stopWork()
  */
 int journalWork::getIndex()
 {
+    qCDebug(logApp) << "journalWork::getIndex called, returning:" << m_threadIndex;
     return m_threadIndex;
 }
 
@@ -101,6 +107,7 @@ int journalWork::getIndex()
  */
 int journalWork::getPublicIndex()
 {
+    qCDebug(logApp) << "journalWork::getPublicIndex called, returning:" << thread_index;
     return thread_index;
 }
 
@@ -111,9 +118,12 @@ int journalWork::getPublicIndex()
  */
 void journalWork::setArg(QStringList arg)
 {
+    qCDebug(logApp) << "journalWork::setArg called with:" << arg;
     m_arg.clear();
-    if (!arg.isEmpty())
+    if (!arg.isEmpty()) {
         m_arg.append(arg);
+        qCDebug(logApp) << "Arguments set successfully";
+    }
 }
 
 /**a
@@ -121,9 +131,9 @@ void journalWork::setArg(QStringList arg)
  */
 void journalWork::run()
 {
-    qCDebug(logJournal) << "threadrun";
+    qCDebug(logApp) << "journalWork::run thread started";
     doWork();
-
+    qCDebug(logApp) << "journalWork::run thread finished";
 }
 
 /**
@@ -131,13 +141,14 @@ void journalWork::run()
  */
 void journalWork::doWork()
 {
+    qCDebug(logApp) << "journalWork::doWork started";
     //此线程刚开始把可以继续变量置true，不然下面没法跑
     m_canRun = true;
     mutex.lock();
     logList.clear();
     mutex.unlock();
     if ((!m_canRun)) {
-        mutex.unlock();
+        qCDebug(logApp) << "Work stopped before starting";
         return;
     }
 
@@ -145,13 +156,11 @@ void journalWork::doWork()
 
     sd_journal *j ;
     if ((!m_canRun)) {
-        mutex.unlock();
         return;
     }
     //打开日志文件
     r = sd_journal_open(&j, SD_JOURNAL_LOCAL_ONLY);
     if ((!m_canRun)) {
-        mutex.unlock();
         sd_journal_close(j);
         return;
     }
@@ -163,7 +172,6 @@ void journalWork::doWork()
     //从尾部开始读，这样出来数据是倒叙，符合需求
     sd_journal_seek_tail(j);
     if ((!m_canRun)) {
-        mutex.unlock();
         sd_journal_close(j);
         return;
     }
@@ -176,7 +184,6 @@ void journalWork::doWork()
             sd_journal_add_match(j, m_arg.at(0).toStdString().c_str(), 0);
     }
     if ((!m_canRun)) {
-        mutex.unlock();
         sd_journal_close(j);
         return;
     }
@@ -184,7 +191,6 @@ void journalWork::doWork()
     //调用宏开始迭代
     SD_JOURNAL_FOREACH_BACKWARDS(j) {
         if ((!m_canRun)) {
-            mutex.unlock();
             sd_journal_close(j);
             return;
         }
@@ -239,11 +245,11 @@ void journalWork::doWork()
                 if (fi.exists())
                     logMsg.daemonName = fi.fileName();
                 else {
-                    qCWarning(logJournal) << "unknown progressname, exe path: " << strList.first();
+                    qCWarning(logApp) << "unknown progressname, exe path: " << strList.first();
                     logMsg.daemonName = "unknown";
                 }
             } else {
-                qCWarning(logJournal) << logMsg.daemonId << "error code" << r;
+                qCWarning(logApp) << logMsg.daemonId << "error code" << r;
                 logMsg.daemonName = "unknown";
             }
         } else {
@@ -303,11 +309,12 @@ void journalWork::doWork()
  */
 QString journalWork::getReplaceColorStr(const char *d)
 {
+    qCDebug(logApp) << "journalWork::getReplaceColorStr processing string";
     QByteArray byteChar(d);
     byteChar = Utils::replaceEmptyByteArray(byteChar);
     QString d_str = QString(byteChar);
-    d_str.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
-    d_str.replace(QRegExp("\\002"), "");
+    d_str.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+    d_str.replace(REG_EXP("\\002"), "");
     return  d_str;
 }
 
@@ -319,9 +326,10 @@ QString journalWork::getReplaceColorStr(const char *d)
  */
 QString journalWork::getDateTimeFromStamp(const QString &str)
 {
+    qCDebug(logApp) << "journalWork::getDateTimeFromStamp converting timestamp:" << str;
     QString ret = "";
     QString dtstr = str.left(str.length() - 6);
-    QDateTime dt = QDateTime::fromTime_t(dtstr.toUInt());
+    QDateTime dt = DATE_FOTIME(dtstr.toUInt());
     ret = dt.toString("yyyy-MM-dd hh:mm:ss");  // + QString(".%1").arg(ums);
     return ret;
 }
@@ -331,6 +339,7 @@ QString journalWork::getDateTimeFromStamp(const QString &str)
  */
 void journalWork::initMap()
 {
+    qCDebug(logApp) << "journalWork::initMap initializing level map";
     m_map.clear();
     m_map.insert(0, DApplication::translate("Level", "Emergency"));
     m_map.insert(1, DApplication::translate("Level", "Alert"));
@@ -340,6 +349,7 @@ void journalWork::initMap()
     m_map.insert(5, DApplication::translate("Level", "Notice"));
     m_map.insert(6, DApplication::translate("Level", "Info"));
     m_map.insert(7, DApplication::translate("Level", "Debug"));
+    qCDebug(logApp) << "Level map initialized with" << m_map.size() << "entries";
 }
 
 /**
@@ -349,5 +359,6 @@ void journalWork::initMap()
  */
 QString journalWork::i2str(int prio)
 {
+    qCDebug(logApp) << "journalWork::i2str converting priority:" << prio;
     return m_map.value(prio);
 }

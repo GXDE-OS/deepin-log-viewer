@@ -13,7 +13,7 @@
 
 #include <QDebug>
 #include <QFile>
-#include <QTextCodec>
+// #include <QTextCodec>
 #include <QTextStream>
 #include <QTextDocument>
 #include <QTextDocumentWriter>
@@ -25,11 +25,7 @@
 #include <malloc.h>
 DWIDGET_USE_NAMESPACE
 
-#ifdef QT_DEBUG
-Q_LOGGING_CATEGORY(logSegementExport, "org.deepin.log.viewer.segement.export.work")
-#else
-Q_LOGGING_CATEGORY(logSegementExport, "org.deepin.log.viewer.segement.export.work", QtInfoMsg)
-#endif
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 /**
  * @brief LogSegementExportThread::LogSegementExportThread 导出日志线程类构造函数
@@ -39,6 +35,8 @@ LogSegementExportThread::LogSegementExportThread(QObject *parent)
     :  QObject(parent),
        QRunnable()
 {
+    qCDebug(logApp) << "Log export thread created";
+
     setAutoDelete(true);
 }
 /**
@@ -46,13 +44,15 @@ LogSegementExportThread::LogSegementExportThread(QObject *parent)
  */
 LogSegementExportThread::~LogSegementExportThread()
 {
-    qCDebug(logSegementExport) << "LogSegementExportThread destoryed.";
+    qCDebug(logApp) << "LogSegementExportThread destoryed.";
     //释放空闲内存
     malloc_trim(0);
 }
 
 void LogSegementExportThread::setParameter(const QString &fileName, const QList<QString> &jList, const QStringList &lables, LOG_FLAG flag)
 {
+    qCDebug(logApp) << "Setting export parameters, file:" << fileName << "log count:" << jList.count() << "flag:" << flag;
+
     QMutexLocker locker(&mutex);
     m_fileName = fileName;
     m_logDataList = jList;
@@ -60,38 +60,52 @@ void LogSegementExportThread::setParameter(const QString &fileName, const QList<
     m_labels = lables;
     m_bForceStop = false;
     if (m_fileName.endsWith(".txt")) {
+        qCDebug(logApp) << "Export mode set to TXT";
         m_runMode = Txt;
     } else if (fileName.endsWith(".html")) {
+        qCDebug(logApp) << "Export mode set to HTML";
         m_runMode = Html;
     } else if (fileName.endsWith(".doc")) {
+        qCDebug(logApp) << "Export mode set to DOC";
         m_runMode = Doc;
-        if (!m_pDocMerger)
+        if (!m_pDocMerger) {
+            qCDebug(logApp) << "Initializing DOC merger";
             initDoc();
+        }
     } else if (fileName.endsWith(".xls")) {
+        qCDebug(logApp) << "Export mode set to XLS";
         m_runMode = Xls;
-        if (!m_pWorkbook)
+        if (!m_pWorkbook) {
+            qCDebug(logApp) << "Initializing XLS workbook";
             initXls();
+        }
     }
     condition.wakeOne();
 }
 
 void LogSegementExportThread::initDoc()
 {
+    qCDebug(logApp) << "Initializing DOC export";
     QString tempdir = getDocTemplatePath();
-    if (tempdir.isEmpty())
+    if (tempdir.isEmpty()) {
+        qCWarning(logApp) << "DOC template path is empty, initialization failed";
         return;
+    }
 
     m_pDocMerger = &DocxFactory:: WordProcessingMerger::getInstance();
     m_pDocMerger->load(tempdir.toStdString());
+    qCDebug(logApp) << "DOC template loaded from:" << tempdir;
     //往表头中添加表头描述，表头为第一行，数据则在下面
     for (int col = 0; col < m_labels.count(); ++col) {
         m_pDocMerger->setClipboardValue("tableRow", QString("column%1").arg(col + 1).toStdString(), m_labels.at(col).toStdString());
     }
     m_pDocMerger->paste("tableRow");
+    qCDebug(logApp) << "DOC headers initialized with" << m_labels.count() << "columns";
 }
 
 void LogSegementExportThread::initXls()
 {
+    qCDebug(logApp) << "Initializing XLS export";
     m_currentXlsRow = 0;
     m_pWorkbook = workbook_new(m_fileName.toStdString().c_str());
     m_pWorksheet = workbook_add_worksheet(m_pWorkbook, nullptr);
@@ -101,24 +115,29 @@ void LogSegementExportThread::initXls()
         worksheet_write_string(m_pWorksheet, static_cast<lxw_row_t>(m_currentXlsRow), static_cast<lxw_col_t>(col), m_labels.at(col).toStdString().c_str(), format);
     }
     ++m_currentXlsRow;
+    qCDebug(logApp) << "XLS workbook initialized with" << m_labels.count() << "columns";
 }
 
 QString LogSegementExportThread::getDocTemplatePath()
 {
+    qCDebug(logApp) << "Getting DOC template path for flag:" << m_flag;
     QString tempdir("");
     if (m_flag == KERN) {
         tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/4column.dfw";
+        qCDebug(logApp) << "Using KERN template path";
     } else if (m_flag == Kwin) {
         tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/1column.dfw";
+        qCDebug(logApp) << "Using Kwin template path";
     } else {
-        qCWarning(logSegementExport) << "exportToDoc type is Wrong!";
+        qCWarning(logApp) << "exportToDoc type is Wrong!";
         return "";
     }
     if (!QFile(tempdir).exists()) {
-        qCWarning(logSegementExport) << "export docx template is not exisits";
+        qCWarning(logApp) << "export docx template is not exisits:" << tempdir;
         return "";
     }
 
+    qCDebug(logApp) << "DOC template path found:" << tempdir;
     return tempdir;
 }
 
@@ -128,6 +147,7 @@ QString LogSegementExportThread::getDocTemplatePath()
  */
 bool LogSegementExportThread::isProcessing()
 {
+    qCDebug(logApp) << "Checking processing status, force stop:" << m_bForceStop;
     return !m_bForceStop;
 }
 
@@ -136,6 +156,7 @@ bool LogSegementExportThread::isProcessing()
  */
 void LogSegementExportThread::stopImmediately()
 {
+    qCDebug(logApp) << "Stopping export thread immediately";
     QMutexLocker locker(&mutex);
     m_bForceStop = true;
     condition.wakeOne();
@@ -146,6 +167,7 @@ void LogSegementExportThread::stopImmediately()
  */
 void LogSegementExportThread::stop()
 {
+    qCDebug(logApp) << "Stopping export thread";
     QMutexLocker locker(&mutex);
     m_bStop = true;
     condition.wakeOne();
@@ -156,7 +178,7 @@ void LogSegementExportThread::stop()
  */
 void LogSegementExportThread::run()
 {
-    qCDebug(logSegementExport) << "threadrun";
+    qCDebug(logApp) << "threadrun";
 
     QMutexLocker locker(&mutex);
     while(!m_bForceStop && !m_bStop) {
@@ -188,7 +210,7 @@ void LogSegementExportThread::run()
                 m_logDataList.clear();
             } catch (const QString &ErrorStr) {
                 // 捕获到异常，导出失败，发出失败信号
-                qCWarning(logSegementExport) << "Export Stop" << ErrorStr;
+                qCWarning(logApp) << "Export Stop" << ErrorStr;
                 emit sigResult(false);
                 if (ErrorStr != m_forceStopStr) {
                     emit sigError(QString("export error: %1").arg(ErrorStr));
@@ -227,6 +249,8 @@ void LogSegementExportThread::run()
 
 bool LogSegementExportThread::exportTxt()
 {
+    qCDebug(logApp) << "Starting text export to file:" << m_fileName;
+
     //判断文件路径是否存在，不存在就返回错误
     QFile fi(m_fileName);
     if (!fi.open(m_bAppendWrite ? (QIODevice::Append | QIODevice::WriteOnly) : QIODevice::WriteOnly)) {
@@ -259,14 +283,21 @@ bool LogSegementExportThread::exportTxt()
     }
 
     //设置文件编码为utf8
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     out.setCodec(QTextCodec::codecForName("utf-8"));
+#else
+    out.setEncoding(QStringConverter::Utf8);
+#endif
     fi.close();
 
+    qCDebug(logApp) << "Text export completed successfully";
     return true;
 }
 
 bool LogSegementExportThread::exportHtml()
 {
+    qCDebug(logApp) << "Starting HTML export to file:" << m_fileName;
+
     QFile html(m_fileName);
     //判断文件路径是否存在，不存在就返回错误
     if (!html.open(m_bAppendWrite ? (QIODevice::Append | QIODevice::WriteOnly) : QIODevice::WriteOnly)) {
@@ -322,11 +353,14 @@ bool LogSegementExportThread::exportHtml()
 
     html.close();
 
+    qCDebug(logApp) << "HTML export completed successfully";
     return true;
 }
 
 bool LogSegementExportThread::exportToDoc()
 {
+    qCDebug(logApp) << "Starting DOC export to file:" << m_fileName;
+
     if (!m_pDocMerger)
         return false;
 
@@ -349,11 +383,14 @@ bool LogSegementExportThread::exportToDoc()
         m_pDocMerger->paste("tableRow");
     }
 
+    qCDebug(logApp) << "DOC export completed successfully";
     return true;
 }
 
 bool LogSegementExportThread::exportToXls()
 {
+    qCDebug(logApp) << "Starting XLS export to file:" << m_fileName;
+
     if (!m_pWorksheet)
         return false;
 
@@ -377,11 +414,13 @@ bool LogSegementExportThread::exportToXls()
         ++m_currentXlsRow;
     }
 
+    qCDebug(logApp) << "XLS export completed successfully";
     return true;
 }
 
 void LogSegementExportThread::htmlEscapeCovert(QString &htmlMsg)
 {
+    qCDebug(logApp) << "Escaping HTML content";
     //无法对所有转义字符进行转换，对常用转义字符转换
     htmlMsg.replace("<", "&lt", Qt::CaseInsensitive);
     htmlMsg.replace(">", "&gt", Qt::CaseInsensitive);
@@ -392,6 +431,7 @@ void LogSegementExportThread::htmlEscapeCovert(QString &htmlMsg)
 
 void LogSegementExportThread::saveDoc()
 {
+    qCDebug(logApp) << "Saving DOC export to file:" << m_fileName;
     //保存，把拼好的xml写入文件中
     QString fileNamex = m_fileName + "x";
 
@@ -405,6 +445,7 @@ void LogSegementExportThread::saveDoc()
 
 void LogSegementExportThread::closeXls()
 {
+    qCDebug(logApp) << "Closing XLS export";
     workbook_close(m_pWorkbook);
     malloc_trim(0);
 }

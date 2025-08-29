@@ -7,11 +7,7 @@
 #include <QDebug>
 #include <QLoggingCategory>
 
-#ifdef QT_DEBUG
-Q_LOGGING_CATEGORY(logSM, "org.deepin.log.viewer.share.memory.manager")
-#else
-Q_LOGGING_CATEGORY(logSM, "org.deepin.log.viewer.share.memory.manager", QtInfoMsg)
-#endif
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 #define LOG_POLIKIT_STOP_TAG "LOGAUTHCONTROL"
 std::atomic<SharedMemoryManager *> SharedMemoryManager::m_instance;
@@ -19,63 +15,80 @@ std::mutex SharedMemoryManager::m_mutex;
 SharedMemoryManager::SharedMemoryManager(QObject *parent)
     :  QObject(parent)
 {
+    qCDebug(logApp) << "SharedMemoryManager constructor";
     init();
 }
 
 SharedMemoryManager *SharedMemoryManager::getInstance()
 {
+    qCDebug(logApp) << "Getting SharedMemoryManager instance";
     return m_instance.load();
 }
 
 void SharedMemoryManager::setRunnableTag(ShareMemoryInfo iShareInfo)
 {
+    qCDebug(logApp) << "Setting runnable tag, isStart:" << iShareInfo.isStart;
     m_commondM->lock();
-    qCDebug(logSM) << "ShareMemoryInfo.isStart:" << iShareInfo.isStart;
+    qCDebug(logApp) << "ShareMemoryInfo.isStart:" << iShareInfo.isStart;
     m_pShareMemoryInfo = static_cast<ShareMemoryInfo *>(m_commondM->data());
     if (m_pShareMemoryInfo) {
         m_pShareMemoryInfo->isStart = iShareInfo.isStart;
+        qCDebug(logApp) << "Successfully set runnable tag";
     } else {
-        //qCWarning(logSM) << "conntrol mem is Not Attech ";
+        qCWarning(logApp) << "Failed to set runnable tag - control memory not attached";
     }
     m_commondM->unlock();
-
 }
 
 QString SharedMemoryManager::getRunnableKey()
 {
+    qCDebug(logApp) << "Getting runnable key";
     return  m_commondM->key();
 }
 
 bool SharedMemoryManager::isAttached()
 {
-    return (m_commondM && m_commondM->isAttached());
+    bool attached = (m_commondM && m_commondM->isAttached());
+    qCDebug(logApp) << "Checking if attached:" << attached;
+    return attached;
 }
 
 void SharedMemoryManager::releaseMemory()
 {
+    qCDebug(logApp) << "Releasing shared memory";
     if (m_commondM) {
-        //  m_commondM->unlock();
-        qCDebug(logSM) << "shared memory error:" << m_commondM->error() << m_commondM->errorString();
-        if (m_commondM->isAttached())      //检测程序当前是否关联共享内存
+        qCDebug(logApp) << "Current shared memory error:" << m_commondM->error() << m_commondM->errorString();
+        if (m_commondM->isAttached()) {
+            qCDebug(logApp) << "Detaching from shared memory";
             m_commondM->detach();
-        qCDebug(logSM) << "shared memory error:" << m_commondM->error() << m_commondM->errorString();
-
+        }
+        qCDebug(logApp) << "Shared memory error after detach:" << m_commondM->error() << m_commondM->errorString();
+    } else {
+        qCWarning(logApp) << "Attempted to release null shared memory";
     }
 }
 
-
-
 void SharedMemoryManager::init()
 {
+    qCDebug(logApp) << "Initializing shared memory";
     m_commondM = new QSharedMemory(this);
-    QString tag = LOG_POLIKIT_STOP_TAG ;//+ QString::number(m_threadCount);
+    QString tag = LOG_POLIKIT_STOP_TAG;
+    qCDebug(logApp) << "Setting shared memory key:" << tag;
     m_commondM->setKey(tag);
-    if (m_commondM->isAttached())      //检测程序当前是否关联共享内存
+    
+    if (m_commondM->isAttached()) {
+        qCDebug(logApp) << "Already attached to shared memory, detaching first";
         m_commondM->detach();
-    if (!m_commondM->create(sizeof(ShareMemoryInfo))) {     //创建共享内存，大小为size
-        qCWarning(logSM) << "ShareMemory create error" << m_commondM->key() << QSharedMemory::SharedMemoryError(m_commondM->error()) << m_commondM->errorString();
-        if (m_commondM->isAttached())      //检测程序当前是否关联共享内存
+    }
+    
+    if (!m_commondM->create(sizeof(ShareMemoryInfo))) {
+        qCWarning(logApp) << "Failed to create shared memory:" << m_commondM->key()
+                        << QSharedMemory::SharedMemoryError(m_commondM->error())
+                        << m_commondM->errorString();
+        if (m_commondM->isAttached()) {
+            qCDebug(logApp) << "Detaching after failed create";
             m_commondM->detach();
+        }
         m_commondM->attach();
 
     } else {
@@ -86,6 +99,6 @@ void SharedMemoryManager::init()
     }
     ShareMemoryInfo info;
     info.isStart = true;
-
+    qCDebug(logApp) << "Setting initial runnable tag";
     setRunnableTag(info);
 }

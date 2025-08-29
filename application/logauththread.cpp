@@ -9,6 +9,7 @@
 #include "wtmpparse.h"
 #include "dbusproxy/dldbushandler.h"
 #include "dbusmanager.h"
+#include "qtcompat.h"
 
 #include <DGuiApplicationHelper>
 #include <DApplication>
@@ -26,11 +27,7 @@
 #include <fstream>
 using namespace std;
 
-#ifdef QT_DEBUG
-Q_LOGGING_CATEGORY(logAuthWork, "org.deepin.log.viewer.auth.work")
-#else
-Q_LOGGING_CATEGORY(logAuthWork, "org.deepin.log.viewer.auth.work", QtInfoMsg)
-#endif
+Q_DECLARE_LOGGING_CATEGORY(logApp)
 
 DGUI_USE_NAMESPACE
 int LogAuthThread::thread_count = 0;
@@ -52,11 +49,13 @@ LogAuthThread::LogAuthThread(QObject *parent)
     , QRunnable()
     , m_type(NONE)
 {
+    qCDebug(logApp) << "LogAuthThread::LogAuthThread called";
     //使用线程池启动该线程，跑完自己删自己
     setAutoDelete(true);
     //静态计数变量加一并赋值给本对象的成员变量，以供外部判断是否为最新线程发出的数据信号
     thread_count++;
     m_threadCount = thread_count;
+    qCDebug(logApp) << "LogAuthThread created, thread count:" << thread_count;
     initDnfLevelMap();
     initLevelMap();
 }
@@ -66,10 +65,12 @@ LogAuthThread::LogAuthThread(QObject *parent)
  */
 LogAuthThread::~LogAuthThread()
 {
+    qCDebug(logApp) << "LogAuthThread destroyed";
     stopProccess();
 }
 void LogAuthThread::initDnfLevelMap()
 {
+    qCDebug(logApp) << "LogAuthThread::initDnfLevelMap initializing DNF level maps";
     m_dnfLevelDict.insert("TRACE", TRACE);
     m_dnfLevelDict.insert("SUBDEBUG", DEBUG);
     m_dnfLevelDict.insert("DDEBUG", DEBUG);
@@ -89,10 +90,12 @@ void LogAuthThread::initDnfLevelMap()
     m_transDnfDict.insert("ERROR", Dtk::Widget::DApplication::translate("Level", "Error"));
     m_transDnfDict.insert("CRITICAL", Dtk::Widget::DApplication::translate("Level", "Critical"));
     m_transDnfDict.insert("SUPERCRITICAL", Dtk::Widget::DApplication::translate("Level", "Super critical"));
+    qCDebug(logApp) << "DNF level maps initialized with" << m_dnfLevelDict.size() << "entries";
 }
 
 void LogAuthThread::initLevelMap()
 {
+    qCDebug(logApp) << "LogAuthThread::initLevelMap initializing level map";
     m_levelMap.clear();
     m_levelMap.insert(0, Dtk::Widget::DApplication::translate("Level", "Emergency"));
     m_levelMap.insert(1, Dtk::Widget::DApplication::translate("Level", "Alert"));
@@ -102,6 +105,7 @@ void LogAuthThread::initLevelMap()
     m_levelMap.insert(5, Dtk::Widget::DApplication::translate("Level", "Notice"));
     m_levelMap.insert(6, Dtk::Widget::DApplication::translate("Level", "Info"));
     m_levelMap.insert(7, Dtk::Widget::DApplication::translate("Level", "Debug"));
+    qCDebug(logApp) << "Level map initialized with" << m_levelMap.size() << "entries";
 }
 
 /**
@@ -109,14 +113,17 @@ void LogAuthThread::initLevelMap()
  */
 void LogAuthThread::stopProccess()
 {
+    qCDebug(logApp) << "LogAuthThread::stopProccess called";
     //防止正在执行时重复执行
     if (m_isStopProccess) {
+        qCDebug(logApp) << "Process already stopping, ignoring duplicate call";
         return;
     }
     m_isStopProccess = true;
     //停止获取线程执行，标记量置false
     m_canRun = false;
     if (!Utils::runInCmd) {
+        qCDebug(logApp) << "Setting shared memory stop flag";
         //共享内存数据结构，用于和获取进程共享内存，数据为是否可执行进程，用于控制数据获取进程停止，因为这里会出现需要提权执行的进程，主进程没有权限停止提权进程，所以使用共享内存变量标记量控制提权进程停止
         ShareMemoryInfo   shareInfo ;
         //设置进程为不可执行
@@ -125,33 +132,42 @@ void LogAuthThread::stopProccess()
         SharedMemoryManager::instance()->setRunnableTag(shareInfo);
     }
     if (m_process) {
+        qCDebug(logApp) << "Killing process";
         m_process->kill();
     }
 }
 
 void LogAuthThread::setFilePath(const QStringList &filePath)
 {
+    qCDebug(logApp) << "LogAuthThread::setFilePath called with" << filePath.size() << "files";
     m_FilePath = filePath;
 }
 
 int LogAuthThread::getIndex()
 {
+    qCDebug(logApp) << "LogAuthThread::getIndex called, returning:" << m_threadCount;
     return  m_threadCount;
 }
 QString LogAuthThread::startTime()
 {
+    qCDebug(logApp) << "LogAuthThread::startTime called";
     QString startStr = "";
     QFile startFile("/proc/uptime");
     if (!startFile.exists()) {
+        qCWarning(logApp) << "/proc/uptime file does not exist";
         return "";
     }
     if (startFile.open(QFile::ReadOnly)) {
         startStr = QString(startFile.readLine());
         startFile.close();
+        qCDebug(logApp) << "Read uptime from /proc/uptime:" << startStr.trimmed();
+    } else {
+        qCWarning(logApp) << "Failed to open /proc/uptime file";
     }
 
     startStr = startStr.split(" ").value(0, "");
     if (startStr.isEmpty()) {
+        qCWarning(logApp) << "Empty start time string";
         return "";
     }
     return startStr;
@@ -162,38 +178,50 @@ QString LogAuthThread::startTime()
  */
 void LogAuthThread::run()
 {
+    qCDebug(logApp) << "LogAuthThread::run called";
     //此线程刚开始把可以继续变量置true，不然下面没法跑
     m_canRun = true;
+    qCInfo(logApp) << "LogAuthThread started processing, type:" << m_type;
     //根据类型成员变量执行对应日志的获取逻辑
     switch (m_type) {
     case KERN:
+        qCDebug(logApp) << "LogAuthThread::run handleKern";
         handleKern();
         break;
     case BOOT:
+        qCDebug(logApp) << "LogAuthThread::run handleBoot";
         handleBoot();
         break;
     case Kwin:
+        qCDebug(logApp) << "LogAuthThread::run handleKwin";
         handleKwin();
         break;
     case XORG:
+        qCDebug(logApp) << "LogAuthThread::run handleXorg";
         handleXorg();
         break;
     case DPKG:
+        qCDebug(logApp) << "LogAuthThread::run handleDkpg";
         handleDkpg();
         break;
     case Normal:
+        qCDebug(logApp) << "LogAuthThread::run handleNormal";
         handleNormal();
         break;
     case Dnf:
+        qCDebug(logApp) << "LogAuthThread::run handleDnf";
         handleDnf();
         break;
     case Dmesg:
+        qCDebug(logApp) << "LogAuthThread::run handleDmesg";
         handleDmesg();
         break;
     case Audit:
+        qCDebug(logApp) << "LogAuthThread::run handleAudit";
         handleAudit();
         break;
     case COREDUMP:
+        qCDebug(logApp) << "LogAuthThread::run handleCoredump";
         handleCoredump();
         break;
     default:
@@ -201,6 +229,7 @@ void LogAuthThread::run()
     }
 
     m_canRun = false;
+    qCInfo(logApp) << "LogAuthThread finished processing";
 }
 
 #include <QFile>
@@ -209,20 +238,24 @@ void LogAuthThread::run()
  */
 void LogAuthThread::handleBoot()
 {
+    qCDebug(logApp) << "Start processing boot logs, file count:" << m_FilePath.count();
     QList<LOG_MSG_BOOT> bList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
             QFile file(m_FilePath.at(i)); // add by Airy
             if (!file.exists()) {
+                qCDebug(logApp) << "Boot log file does not exist:" << m_FilePath.at(i);
                 emit bootFinished(m_threadCount);
                 return;
             }
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing boot logs";
             return;
         }
 
         if (!Utils::runInCmd) {
+            // qCDebug(logApp) << "Initializing process for boot logs";
             initProccess();
             m_process->setProcessChannelMode(QProcess::MergedChannels);
             //共享内存对应变量置true，允许进程内部逻辑运行
@@ -234,6 +267,7 @@ void LogAuthThread::handleBoot()
                              << m_FilePath.at(i) << SharedMemoryManager::instance()->getRunnableKey());
             m_process->waitForFinished(-1);
             if (m_process->exitCode() != 0) {
+                qCDebug(logApp) << "Process exited with code:" << m_process->exitCode();
                 emit bootFinished(m_threadCount);
                 return;
             }
@@ -241,7 +275,7 @@ void LogAuthThread::handleBoot()
 
         QString byte = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
         byte.replace('\u0000', "").replace("\x01", "");
-        QStringList strList = byte.split('\n', QString::SkipEmptyParts);
+        QStringList strList = byte.split('\n', SKIP_EMPTY_PARTS);
 
         //按换行分割
         for (int j = strList.size() - 1; j >= 0; --j) {
@@ -249,14 +283,15 @@ void LogAuthThread::handleBoot()
             if (lineStr.startsWith("/dev") || lineStr.isEmpty())
                 continue;
             //删除颜色格式字符
-            lineStr.replace(QRegExp("\\#033\\[\\d+(;\\d+){0,2}m"), "");
+            lineStr.replace(REG_EXP("\\#033\\[\\d+(;\\d+){0,2}m"), "");
             // remove Useless characters
-            lineStr.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+            lineStr.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
             Utils::replaceColorfulFont(&lineStr);
             QStringList retList;
             LOG_MSG_BOOT bMsg;
-            retList = lineStr.split(" ", QString::SkipEmptyParts);
+            retList = lineStr.split(" ", SKIP_EMPTY_PARTS);
             if (retList.size() == 1) {
+                qCDebug(logApp) << "Boot log line:" << lineStr;
                 bMsg.msg = lineStr.trimmed();
                 bList.append(bMsg);
             } else {
@@ -274,6 +309,7 @@ void LogAuthThread::handleBoot()
 
             //每获得500个数据就发出信号给控件加载
             if (bList.count() % SINGLE_READ_CNT == 0) {
+                qCDebug(logApp) << "Emitting boot data, count:" << bList.count();
                 emit bootData(m_threadCount, bList);
                 bList.clear();
             }
@@ -281,9 +317,11 @@ void LogAuthThread::handleBoot()
     }
     //最后可能有余下不足500的数据
     if (bList.count() >= 0) {
+        qCDebug(logApp) << "Emitting boot data, count:" << bList.count();
         emit bootData(m_threadCount, bList);
     }
     emit bootFinished(m_threadCount);
+    qCDebug(logApp) << "Finished processing boot logs, total items:" << bList.count();
 }
 
 /**
@@ -291,6 +329,7 @@ void LogAuthThread::handleBoot()
  */
 void LogAuthThread::handleKern()
 {
+    qCDebug(logApp) << "Start processing kernel logs, file count:" << m_FilePath.count();
     QList<LOG_MSG_JOURNAL> kList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
@@ -356,7 +395,7 @@ void LogAuthThread::handleKern()
         }
 
         byte.replace('\u0000', "").replace("\x01", "");
-        QStringList strList = byte.split('\n', QString::SkipEmptyParts);
+        QStringList strList = byte.split('\n', SKIP_EMPTY_PARTS);
         for (int j = strList.size() - 1; j >= 0; --j) {
             if (!m_canRun) {
                 return;
@@ -364,8 +403,8 @@ void LogAuthThread::handleKern()
             QString str = strList.at(j);
             LOG_MSG_JOURNAL msg;
             //删除颜色格式字符
-            str.replace(QRegExp("\\#033\\[\\d+(;\\d+){0,2}m"), "");
-            QStringList list = str.split(" ", QString::SkipEmptyParts);
+            str.replace(REG_EXP("\\#033\\[\\d+(;\\d+){0,2}m"), "");
+            QStringList list = str.split(" ", SKIP_EMPTY_PARTS);
             if (list.size() < 5)
                 continue;
             //获取内核年份接口已添加，等待系统接口添加年份改变相关日志
@@ -434,6 +473,7 @@ void LogAuthThread::handleKern()
             }
             //每获得500个数据就发出信号给控件加载
             if (kList.count() % SINGLE_READ_CNT == 0) {
+                qCDebug(logApp) << "Emitting kernel data, count:" << kList.count();
                 emit kernData(m_threadCount, kList);
                 kList.clear();
             }
@@ -444,9 +484,11 @@ void LogAuthThread::handleKern()
     }
     //最后可能有余下不足500的数据
     if (kList.count() >= 0) {
+        qCDebug(logApp) << "Emitting kernel data, count:" << kList.count();
         emit kernData(m_threadCount, kList);
     }
     emit kernFinished(m_threadCount);
+    qCDebug(logApp) << "Finished processing kernel logs, total items:" << kList.count();
 }
 
 /**
@@ -454,34 +496,42 @@ void LogAuthThread::handleKern()
  */
 void LogAuthThread::handleKwin()
 {
+    qCDebug(logApp) << "LogAuthThread::handleKwin started";
     QFile file(KWIN_TREE_DATA);
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing kwin logs";
         return;
     }
     QList<LOG_MSG_KWIN> kwinList;
     if (!file.exists()) {
+        qCWarning(logApp) << "Kwin log file does not exist:" << KWIN_TREE_DATA;
         emit kwinFinished(m_threadCount);
         return;
     }
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing kwin logs";
         return;
     }
     initProccess();
     m_process->start("cat", QStringList() << KWIN_TREE_DATA);
     m_process->waitForFinished(-1);
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing kwin logs";
         return;
     }
     QByteArray outByte = m_process->readAllStandardOutput();
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing kwin logs";
         return;
     }
+    qCDebug(logApp) << "Read" << outByte.size() << "bytes from kwin log file";
 
-    QStringList strList =  QString(Utils::replaceEmptyByteArray(outByte)).split('\n', QString::SkipEmptyParts);
+    QStringList strList =  QString(Utils::replaceEmptyByteArray(outByte)).split('\n', SKIP_EMPTY_PARTS);
 
     for (int i = strList.size() - 1; i >= 0 ; --i)  {
         QString str = strList.at(i);
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing kwin logs";
             return;
         }
         if (str.trimmed().isEmpty()) {
@@ -492,16 +542,19 @@ void LogAuthThread::handleKwin()
         kwinList.append(kwinMsg);
         //每获得500个数据就发出信号给控件加载
         if (kwinList.count() % SINGLE_READ_CNT == 0) {
+            // qCDebug(logApp) << "Emitting kwin data, count:" << kwinList.count();
             emit kwinData(m_threadCount, kwinList);
             kwinList.clear();
         }
     }
 
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing kwin logs";
         return;
     }
     //最后可能有余下不足500的数据
     if (kwinList.count() >= 0) {
+        qCDebug(logApp) << "Emitting kwin data, count:" << kwinList.count();
         emit kwinData(m_threadCount, kwinList);
     }
     emit kwinFinished(m_threadCount);
@@ -512,11 +565,13 @@ void LogAuthThread::handleKwin()
  */
 void LogAuthThread::handleXorg()
 {
+    qCDebug(logApp) << "LogAuthThread::handleXorg started, processing" << m_FilePath.count() << "files";
     QList<LOG_MSG_XORG> xList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
             QFile file(m_FilePath.at(i)); // add by Airy
             if (!file.exists()) {
+                qCWarning(logApp) << "Xorg log file does not exist:" << m_FilePath.at(i);
                 emit proccessError(tr("Log file is empty"));
                 emit xorgFinished(m_threadCount);
                 return;
@@ -525,33 +580,37 @@ void LogAuthThread::handleXorg()
         if (!m_canRun) {
             return;
         }
+        qCDebug(logApp) << "Processing Xorg file:" << m_FilePath.at(i);
         QString m_Log = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
         // dbus鉴权失败，不再继续解析
         if (m_Log.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {
+            qCDebug(logApp) << "Xorg log file is not allowed to configrate firewall";
             emit xorgFinished(m_threadCount);
             return;
         }
         QByteArray outByte = m_Log.toUtf8();
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing xorg logs";
             return;
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing xorg logs";
             return;
         }
-        QStringList fileInfoList = QString(Utils::replaceEmptyByteArray(outByte)).split('\n', QString::SkipEmptyParts);
+        QStringList fileInfoList = QString(Utils::replaceEmptyByteArray(outByte)).split('\n', SKIP_EMPTY_PARTS);
         QString tempStr = "";
         for (QStringList::Iterator k = fileInfoList.end() - 1; k != fileInfoList.begin() - 1; --k) {
             QString &str = *k;
             //清除颜色格式字符
-            str.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+            str.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
             if (str.startsWith("[")) {
-                QStringList list = str.split("]", QString::SkipEmptyParts);
+                QStringList list = str.split("]", SKIP_EMPTY_PARTS);
                 if (list.count() < 2)
                     continue;
                 QString timeStr = list[0];
                 QString msgInfo = list.mid(1, list.length() - 1).join("]").trimmed();
                 // 仅显示时间偏移量（单位：秒
-                QString tStr = timeStr.split("[", QString::SkipEmptyParts)[0].trimmed();
+                QString tStr = timeStr.split("[", SKIP_EMPTY_PARTS)[0].trimmed();
                 LOG_MSG_XORG msg;
                 msg.offset = tStr;
                 msg.msg = msgInfo + tempStr;
@@ -559,6 +618,7 @@ void LogAuthThread::handleXorg()
                 xList.append(msg);
                 //每获得500个数据就发出信号给控件加载
                 if (xList.count() % SINGLE_READ_CNT == 0) {
+                    // qCDebug(logApp) << "Emitting xorg data, count:" << xList.count();
                     emit xorgData(m_threadCount, xList);
                     xList.clear();
                 }
@@ -572,6 +632,7 @@ void LogAuthThread::handleXorg()
     }
     //最后可能有余下不足500的数据
     if (xList.count() >= 0) {
+        // qCDebug(logApp) << "Emitting xorg data, count:" << xList.count();
         emit xorgData(m_threadCount, xList);
     }
     emit xorgFinished(m_threadCount);
@@ -582,16 +643,21 @@ void LogAuthThread::handleXorg()
  */
 void LogAuthThread::handleDkpg()
 {
+    qCDebug(logApp) << "LogAuthThread::handleDkpg started, processing" << m_FilePath.count() << "files";
     QList<LOG_MSG_DPKG> dList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
             QFile file(m_FilePath.at(i)); // if not,maybe crash
-            if (!file.exists())
+            if (!file.exists()) {
+                qCWarning(logApp) << "DPKG log file does not exist:" << m_FilePath.at(i);
                 return;
+            }
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing dpkg logs";
             return;
         }
+        qCDebug(logApp) << "Processing DPKG file:" << m_FilePath.at(i);
 
         QString m_Log = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
         // dbus鉴权失败，不再继续解析
@@ -601,16 +667,18 @@ void LogAuthThread::handleDkpg()
         }
         QByteArray outByte = m_Log.toUtf8();
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing dpkg logs";
             return;
         }
-        QStringList strList = QString(Utils::replaceEmptyByteArray(outByte)).split('\n', QString::SkipEmptyParts);
+        QStringList strList = QString(Utils::replaceEmptyByteArray(outByte)).split('\n', SKIP_EMPTY_PARTS);
         for (int j = strList.size() - 1; j >= 0; --j) {
             QString str = strList.at(j);
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing dpkg logs";
                 return;
             }
-            str.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
-            QStringList m_strList = str.split(" ", QString::SkipEmptyParts);
+            str.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+            QStringList m_strList = str.split(" ", SKIP_EMPTY_PARTS);
             if (m_strList.size() < 3)
                 continue;
 
@@ -633,14 +701,17 @@ void LogAuthThread::handleDkpg()
             //        dList.append(dpkgLog);
             dList.append(dpkgLog);
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing dpkg logs";
                 return;
             }
             //每获得500个数据就发出信号给控件加载
             if (dList.count() % SINGLE_READ_CNT == 0) {
+                // qCDebug(logApp) << "Emitting dpkg data, count:" << dList.count();
                 emit dpkgData(m_threadCount, dList);
                 dList.clear();
             }
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing dpkg logs";
                 return;
             }
         }
@@ -648,6 +719,7 @@ void LogAuthThread::handleDkpg()
 
     //最后可能有余下不足500的数据
     if (dList.count() >= 0) {
+        // qCDebug(logApp) << "Emitting dpkg data, count:" << dList.count();
         emit dpkgData(m_threadCount, dList);
     }
     emit dpkgFinished(m_threadCount);
@@ -655,13 +727,16 @@ void LogAuthThread::handleDkpg()
 
 void LogAuthThread::handleNormal()
 {
+    qCDebug(logApp) << "LogAuthThread::handleNormal started";
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing normal logs";
         emit normalFinished(m_threadCount);
         return;
     }
 
     struct utmp *utbufp;
     if (wtmp_open(QString(WTMP_FILE).toLatin1().data()) == -1) {
+        qCCritical(logApp) << "Failed to open WTMP_FILE:" << WTMP_FILE;
         printf("open WTMP_FILE file error\n");
         return;  // exit(1) will exit this application
     }
@@ -669,6 +744,7 @@ void LogAuthThread::handleNormal()
     NormalInfoTime();
 
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing normal logs";
         return;
     }
 
@@ -678,6 +754,7 @@ void LogAuthThread::handleNormal()
     QList<LOG_MSG_NORMAL> nList;
     while ((utbufp = wtmp_next()) != (static_cast<struct utmp *>(nullptr))) {
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing normal logs";
             return;
         }
         if (utbufp->ut_type == RUN_LVL || utbufp->ut_type == BOOT_TIME || utbufp->ut_type == USER_PROCESS) {
@@ -705,7 +782,7 @@ void LogAuthThread::handleNormal()
             QString strFormat = "ddd MMM dd hh:mm";
 
             //修改时间格式转换方法，采用QDateTime 转换
-            QString start_str = locale.toString(QDateTime::fromTime_t(static_cast<uint>(utbufp->ut_time)), strFormat);
+            QString start_str = locale.toString(DATE_FOTIME(static_cast<uint>(utbufp->ut_time)), strFormat);
             //截止时间解析
             if (Nmsg.eventType == "Login" || Nmsg.eventType == "Boot") {
                 if (count1 <= TimeList.length() - 1) {
@@ -716,7 +793,7 @@ void LogAuthThread::handleNormal()
                 Nmsg.msg = start_str + "  -  ";
             }
 
-            QString n_time = QDateTime::fromTime_t(static_cast<uint>(utbufp->ut_time)).toString("yyyy-MM-dd hh:mm:ss");
+            QString n_time = DATE_FOTIME(static_cast<uint>(utbufp->ut_time)).toString("yyyy-MM-dd hh:mm:ss");
             Nmsg.dateTime = n_time;
             QDateTime nn_time = QDateTime::fromString(Nmsg.dateTime, "yyyy-MM-dd hh:mm:ss");
             if (m_normalFilters.timeFilterEnd > 0 && m_normalFilters.timeFilterBegin > 0) {
@@ -731,6 +808,7 @@ void LogAuthThread::handleNormal()
     wtmp_close();
 
     if (nList.count() >= 0) {
+        // qCDebug(logApp) << "Emitting normal data, count:" << nList.count();
         emit normalData(m_threadCount, nList);
     }
     emit normalFinished(m_threadCount);
@@ -738,12 +816,15 @@ void LogAuthThread::handleNormal()
 
 void LogAuthThread::NormalInfoTime()
 {
+    qCDebug(logApp) << "LogAuthThread::NormalInfoTime started";
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing normal logs";
         return;
     }
     initProccess();
 
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing normal logs";
         return;
     }
     //共享内存对应变量置true，允许进程内部逻辑运行
@@ -756,17 +837,21 @@ void LogAuthThread::NormalInfoTime()
     QByteArray outByte = m_process->readAllStandardOutput();
     QByteArray byte = Utils::replaceEmptyByteArray(outByte);
     QTextStream stream(&byte);
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QByteArray encode;
     stream.setCodec(encode);
+    #endif
     stream.readAll();
     QStringList l = QString(byte).split('\n');
     m_process->close();
     TimeList.clear();
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing normal logs";
         return;
     }
     for (QString str : l) {
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing normal logs";
             return;
         }
         if (str == "") continue;
@@ -792,19 +877,25 @@ void LogAuthThread::NormalInfoTime()
 
 void LogAuthThread::handleDnf()
 {
+    qCDebug(logApp) << "LogAuthThread::handleDnf started, processing" << m_FilePath.count() << "files";
     QList<LOG_MSG_DNF> dList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
             QFile file(m_FilePath.at(i)); // if not,maybe crash
-            if (!file.exists())
+            if (!file.exists()) {
+                qCWarning(logApp) << "DNF log file does not exist:" << m_FilePath.at(i);
                 return;
+            }
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing dnf logs";
             return;
         }
+        qCDebug(logApp) << "Processing DNF file:" << m_FilePath.at(i);
         QByteArray outByte = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i)).toUtf8();
         // dbus鉴权失败，不再继续解析
         if (outByte.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {
+            qCDebug(logApp) << "DNF log file is not allowed to configrate firewall";
             emit dnfFinished(dList);
             return;
         }
@@ -818,6 +909,7 @@ void LogAuthThread::handleDnf()
         QRegularExpression re("^(\\d{4}-[0-2]\\d-[0-3]\\d)\\D*([0-2]\\d:[0-5]\\d:[0-5]\\d)\\S*\\s*(\\w*)\\s*(.*)$");
         for (int j = allLog.size() - 1; j >= 0; --j) {
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing dnf logs";
                 return;
             }
             QString str = allLog.value(j);
@@ -845,6 +937,7 @@ void LogAuthThread::handleDnf()
                 }
             }
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing dnf logs";
                 return;
             }
         }
@@ -854,20 +947,25 @@ void LogAuthThread::handleDnf()
 
 void LogAuthThread::handleDmesg()
 {
+    qCDebug(logApp) << "LogAuthThread::handleDmesg started";
     QList<LOG_MSG_DMESG> dmesgList;
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing dmesg logs";
         return;
     }
     QString startStr = startTime();
     QDateTime curDt = QDateTime::currentDateTime();
 
     if (startStr.isEmpty()) {
+        qCWarning(logApp) << "Failed to get system start time";
         emit dmesgFinished(dmesgList);
         return;
     }
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing dmesg logs";
         return;
     }
+    qCDebug(logApp) << "System start time:" << startStr;
 
     initProccess();
     //共享内存对应变量置true，允许进程内部逻辑运行
@@ -881,6 +979,7 @@ void LogAuthThread::handleDmesg()
     QString errorStr(m_process->readAllStandardError());
     Utils::CommandErrorType commandErrorType = Utils::isErroCommand(errorStr);
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing dmesg logs";
         return;
     }
     if (commandErrorType != Utils::NoError) {
@@ -893,13 +992,16 @@ void LogAuthThread::handleDmesg()
         return;
     }
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing dmesg logs";
         return;
     }
     QByteArray outByte = m_process->readAllStandardOutput();
     QByteArray byte = Utils::replaceEmptyByteArray(outByte);
     QTextStream stream(&byte);
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QByteArray encode;
     stream.setCodec(encode);
+    #endif
     stream.readAll();
     QStringList l = QString(byte).split('\n');
     m_process->close();
@@ -909,21 +1011,31 @@ void LogAuthThread::handleDmesg()
     qint64 curDtSecond = curDt.toMSecsSinceEpoch() - static_cast<int>(startStr.toDouble() * 1000);
     for (QString str : l) {
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing dmesg logs";
             return;
         }
-        str.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
-        QRegExp dmesgExp("^\\<([0-7])\\>\\[\\s*[+-]?(0|([1-9]\\d*))(\\.\\d+)?\\](.*)");
+        str.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+        REG_EXP dmesgExp("^\\<([0-7])\\>\\[\\s*[+-]?(0|([1-9]\\d*))(\\.\\d+)?\\](.*)");
         //启用贪婪匹配
+        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         dmesgExp.setMinimal(false);
         int pos = dmesgExp.indexIn(str);
+        #else
+        dmesgExp.setPatternOptions(QRegularExpression::UseUnicodePropertiesOption);
+        int pos = dmesgExp.match(str).capturedStart();
+        #endif
         if (pos >= 0) {
+            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QStringList list = dmesgExp.capturedTexts();
+            #else
+            QStringList list = dmesgExp.match(str).capturedTexts();
+            #endif
             if (list.count() < 6)
                 continue;
             QString timeStr = list[3] + list[4];
             QString msgInfo = list[5].simplified();
             int levelOrigin = list[1].toInt();
-            QString tStr = timeStr.split("[", QString::SkipEmptyParts)[0].trimmed();
+            QString tStr = timeStr.split("[", SKIP_EMPTY_PARTS)[0].trimmed();
             qint64 realT = curDtSecond + qint64(tStr.toDouble() * 1000);
             QDateTime realDt = QDateTime::fromMSecsSinceEpoch(realT);
             if (realDt.toMSecsSinceEpoch() < m_dmesgFilters.timeFilter) // add by Airy
@@ -943,6 +1055,7 @@ void LogAuthThread::handleDmesg()
             }
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing dmesg logs";
             return;
         }
     }
@@ -951,25 +1064,30 @@ void LogAuthThread::handleDmesg()
 
 void LogAuthThread::handleAudit()
 {
+    qCDebug(logApp) << "LogAuthThread::handleAudit started";
     QList<LOG_MSG_AUDIT> aList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
             if (!DLDBusHandler::instance(this)->isFileExist(m_FilePath.at(i))) {
+                qCDebug(logApp) << "Audit log file does not exist:" << m_FilePath.at(i);
                 emit auditFinished(m_threadCount);
                 return;
             }
         }
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing audit logs";
             return;
         }
 
         if (!Utils::runInCmd) {
             initProccess();
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing audit logs";
                 return;
             }
             m_process->setProcessChannelMode(QProcess::MergedChannels);
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing audit logs";
                 return;
             }
 
@@ -977,11 +1095,13 @@ void LogAuthThread::handleAudit()
                 if (DBusManager::isAuditAdmin()) {
                     // 是审计管理员，需要鉴权，有错则传出空数据
                     if (!Utils::checkAuthorization("com.deepin.pkexec.logViewerAuth.self", QCoreApplication::instance()->applicationPid())) {
+                        qCDebug(logApp) << "Thread stopped before processing audit logs";
                         emit auditFinished(m_threadCount);
                         return;
                     }
                 } else {
                     // 不是审计管理员，给出提示
+                    qCDebug(logApp) << "Thread stopped before processing audit logs";
                     emit auditFinished(m_threadCount, true);
                     return;
                 }
@@ -995,6 +1115,7 @@ void LogAuthThread::handleAudit()
                                  << m_FilePath.at(i) << SharedMemoryManager::instance()->getRunnableKey());
                 m_process->waitForFinished(-1);
                 if (m_process->exitCode() != 0) {
+                    qCDebug(logApp) << "Thread stopped before processing audit logs";
                     emit auditFinished(m_threadCount);
                     return;
                 }
@@ -1002,6 +1123,7 @@ void LogAuthThread::handleAudit()
         }
 
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing audit logs";
             return;
         }
 
@@ -1023,12 +1145,13 @@ void LogAuthThread::handleAudit()
         }
 
         byte.replace('\u0000', "").replace("\x01", "");
-        QStringList strList = byte.split('\n', QString::SkipEmptyParts);
+        QStringList strList = byte.split('\n', SKIP_EMPTY_PARTS);
 
         QRegularExpression re;
         QRegularExpressionMatch match;
         for (int j = strList.size() - 1; j >= 0; --j) {
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing audit logs";
                 return;
             }
             QString str = strList.at(j);
@@ -1037,10 +1160,10 @@ void LogAuthThread::handleAudit()
 
             LOG_MSG_AUDIT msg;
             //删除颜色格式字符
-            str.replace(QRegExp("\\#033\\[\\d+(;\\d+){0,2}m"), "");
+            str.replace(REG_EXP("\\#033\\[\\d+(;\\d+){0,2}m"), "");
             // remove Useless characters
-            str.replace(QRegExp("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
-            QStringList list = str.split(" ", QString::SkipEmptyParts);
+            str.replace(REG_EXP("\\x1B\\[\\d+(;\\d+){0,2}m"), "");
+            QStringList list = str.split(" ", SKIP_EMPTY_PARTS);
             if (list.size() < 2)
                 continue;
 
@@ -1061,7 +1184,12 @@ void LogAuthThread::handleAudit()
                 match = re.match(str);
                 if (match.hasMatch()) {
                     QString addr = match.captured(0);
-                    if (QRegExp("\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b").exactMatch(addr))
+                    REG_EXP ipExp("\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b");
+                    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                    if (ipExp.exactMatch(addr))
+                    #else
+                    if (ipExp.match(addr).hasMatch())
+                    #endif
                         auditType = Audit_Remote;
                 }
 
@@ -1088,7 +1216,7 @@ void LogAuthThread::handleAudit()
             re.setPattern("(?<=msg=audit\\()[^\\.]*(?=\\.)");
             match = re.match(str);
             if (match.hasMatch()) {
-                QDateTime dateTime = QDateTime::fromTime_t(match.captured(0).toUInt());
+                QDateTime dateTime = DATE_FOTIME(match.captured(0).toUInt());
                 qint64 iTime = dateTime.toMSecsSinceEpoch();
                 //对时间筛选
                 if (m_auditFilters.timeFilterBegin > 0 && m_auditFilters.timeFilterEnd > 0) {
@@ -1158,6 +1286,7 @@ void LogAuthThread::handleAudit()
 
             aList.append(msg);
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing audit logs";
                 return;
             }
             //每获得500个数据就发出信号给控件加载
@@ -1166,6 +1295,7 @@ void LogAuthThread::handleAudit()
                 aList.clear();
             }
             if (!m_canRun) {
+                qCDebug(logApp) << "Thread stopped before processing audit logs";
                 return;
             }
         }
@@ -1179,7 +1309,9 @@ void LogAuthThread::handleAudit()
 
 void LogAuthThread::handleCoredump()
 {
+    qCDebug(logApp) << "LogAuthThread::handleCoredump started";
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing coredump logs";
         return;
     }
     QList<LOG_MSG_COREDUMP> coredumpList;
@@ -1197,18 +1329,19 @@ void LogAuthThread::handleCoredump()
         byte = Utils::replaceEmptyByteArray(outByte);
     }
 
-    QStringList strList =  QString(byte).split('\n', QString::SkipEmptyParts);
+    QStringList strList =  QString(byte).split('\n', SKIP_EMPTY_PARTS);
 
-    QRegExp re("(Storage: )\\S+");
+    REG_EXP re("(Storage: )\\S+");
     for (int i = strList.size() - 1; i >= 0 ; --i)  {
         QString str = strList.at(i);
         if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing coredump logs";
             return;
         }
         if (str.trimmed().isEmpty()) {
             continue;
         }
-        QStringList tmpList = str.split(" ", QString::SkipEmptyParts);
+        QStringList tmpList = str.split(" ", SKIP_EMPTY_PARTS);
         if (tmpList.count() < 10)
             continue;
 
@@ -1248,8 +1381,15 @@ void LogAuthThread::handleCoredump()
             if (strList.size() > 1) {
                 coredumpMsg.stackInfo = "Stack trace of thread" + strList[1];
             }
+            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             re.indexIn(outInfoByte);
             coredumpMsg.storagePath = re.cap(0).replace("Storage: ", "");
+            #else
+            QRegularExpressionMatch match = re.match(outInfoByte);
+            if (match.hasMatch()) {
+                coredumpMsg.storagePath = match.captured(0).replace("Storage: ", "");
+            }
+            #endif
         } else {
             coredumpMsg.storagePath = QString("coredump file is missing");
         }
@@ -1263,6 +1403,7 @@ void LogAuthThread::handleCoredump()
     }
 
     if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing coredump logs";
         return;
     }
 
@@ -1275,8 +1416,9 @@ void LogAuthThread::handleCoredump()
 
 QString LogAuthThread::readAppLogFromLastLines(const QString& filePath, const int& count)
 {
+    qCDebug(logApp) << "LogAuthThread::readAppLogFromLastLines started";
     if (!QFile::exists(filePath)) {
-        qCWarning(logAuthWork) << QString("log not existed. path:%1").arg(filePath);
+        qCWarning(logApp) << QString("log not existed. path:%1").arg(filePath);
         return "";
     }
 
@@ -1325,7 +1467,9 @@ QString LogAuthThread::readAppLogFromLastLines(const QString& filePath, const in
  */
 void LogAuthThread::initProccess()
 {
+    qCDebug(logApp) << "LogAuthThread::initProccess started";
     if (!m_process) {
+        qCDebug(logApp) << "LogAuthThread::initProccess m_process is null";
         m_process.reset(new QProcess);
     }
 }
@@ -1339,6 +1483,7 @@ void LogAuthThread::initProccess()
  */
 qint64 LogAuthThread::formatDateTime(QString m, QString d, QString t)
 {
+    qCDebug(logApp) << "LogAuthThread::formatDateTime started";
     QLocale local(QLocale::English, QLocale::UnitedStates);
 
     QDate curdt = QDate::currentDate();
@@ -1356,6 +1501,7 @@ qint64 LogAuthThread::formatDateTime(QString m, QString d, QString t)
  */
 qint64 LogAuthThread::formatDateTime(QString y, QString t)
 {
+    qCDebug(logApp) << "LogAuthThread::formatDateTime started";
     //when /var/kern.log have the year
     QLocale local(QLocale::English, QLocale::UnitedStates);
     QString tStr = QString("%1 %2").arg(y).arg(t);
