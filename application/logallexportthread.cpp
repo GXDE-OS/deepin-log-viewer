@@ -54,10 +54,61 @@ bool LogAllExportThread::addFileToZip(const QString &filePath, const QString &zi
 {
     if (m_cancel.load() || !m_zipFile) return false;
 
+    // Try direct file access first
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        qCWarning(logApp) << "Failed to open file for zipping:" << filePath;
-        return false;
+        qCDebug(logApp) << "Direct file access failed, trying DBus export for:" << filePath;
+
+        // For permission-restricted files like auth.log, use DBus exportLog interface
+        if (DLDBusHandler::instance(nullptr)->exportLog(QFileInfo(m_outfile).path(), filePath, true)) {
+            // Read the exported content and add to zip
+            QFile exportedFile(QFileInfo(m_outfile).path() + "/" + QFileInfo(filePath).fileName());
+            if (exportedFile.open(QIODevice::ReadOnly)) {
+                QByteArray content = exportedFile.readAll();
+                exportedFile.close();
+                exportedFile.remove(); // Clean up exported file
+
+                // Create zip entry directly from DBus content
+                zip_fileinfo zfi = {};
+                QFileInfo fileInfo(filePath);
+                if (fileInfo.exists()) {
+                    QDateTime lastModified = fileInfo.lastModified();
+                    zfi.tmz_date = dateTimeToTmZip(lastModified);
+                    zfi.dosDate = 0;
+                }
+
+                zipOpenNewFileInZip64(m_zipFile, zipEntryName.toUtf8().constData(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, ZIP_COMPRESSION_LEVEL, 1);
+
+                const char* data = content.constData();
+                qint64 size = content.size();
+                qint64 offset = 0;
+                char buf[ZIP_BUFFER_SIZE];
+
+                while (size > 0) {
+                    qint64 bytesToWrite = qMin(static_cast<qint64>(ZIP_BUFFER_SIZE), size);
+                    memcpy(buf, data + offset, bytesToWrite);
+
+                    if (zipWriteInFileInZip(m_zipFile, buf, bytesToWrite) != ZIP_OK) {
+                        qCCritical(logApp) << "Failed to write DBus content to zip stream for file:" << filePath;
+                        zipCloseFileInZip(m_zipFile);
+                        return false;
+                    }
+
+                    offset += bytesToWrite;
+                    size -= bytesToWrite;
+                }
+
+                zipCloseFileInZip(m_zipFile);
+                qCDebug(logApp) << "Successfully added file to zip via DBus:" << filePath;
+                return true;
+            } else {
+                qCWarning(logApp) << "Failed to read exported file from DBus:" << filePath;
+                return false;
+            }
+        } else {
+            qCWarning(logApp) << "Failed to export file via DBus:" << filePath;
+            return false;
+        }
     }
 
     // Get file modification time and set it in zip_fileinfo
@@ -146,7 +197,11 @@ void LogAllExportThread::ensureDirectoriesExist(const QString &filePath)
     }
     
     // Extract directory parts from file path
+#if (QT_VERSION <= QT_VERSION_CHECK(5, 15, 0))
+    QStringList pathParts = filePath.split('/', QString::SkipEmptyParts);
+#else
     QStringList pathParts = filePath.split('/', Qt::SkipEmptyParts);
+#endif
     if (pathParts.size() <= 1) return; // No directories to create
     
     QString currentPath;
@@ -294,6 +349,10 @@ void LogAllExportThread::run()
         } else if (it.contains(AUDIT_TREE_DATA, Qt::CaseInsensitive)) {
             data.logCategory = "audit";
             data.files.append(DLDBusHandler::instance(nullptr)->getFileInfo("audit", false));
+        } else if (it.contains(AUTH_TREE_DATA, Qt::CaseInsensitive)) {
+            data.logCategory = "auth";
+            QStringList authLogFiles = LogApplicationHelper::instance()->getAuthLogList();
+            data.files.append(authLogFiles);
         }
 
         data.files.removeDuplicates();
@@ -412,9 +471,10 @@ void LogAllExportThread::run()
     if (!m_cancel.load()) {
         // Create temporary directory for ops logs
         QString userHomePath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-        QString opsLogPath = QDir::tempPath() + "/deepin-log-viewer-ops-logs-" + QString::number(QDateTime::currentMSecsSinceEpoch());
+        QTemporaryDir tempDir(QDir::tempPath() + "/XXXXXX");
 
-        if (QDir().mkpath(opsLogPath)) {
+        if (tempDir.isValid()) {
+            QString opsLogPath = tempDir.path();
             DLDBusHandler::instance(this)->exportOpsLog(opsLogPath, userHomePath);
             completedTasks += 5;
             emit updatecurrentProcess(completedTasks);
@@ -479,15 +539,14 @@ void LogAllExportThread::run()
             }
             completedTasks += 2;
             emit updatecurrentProcess(completedTasks);
-            // Clean up temporary directory
-            if (!Utils::deleteDir(opsLogPath)) {
-                qCWarning(logApp) << "Failed to remove temporary ops log directory:" << opsLogPath;
-            }
-            completedTasks += 1;
-            emit updatecurrentProcess(completedTasks);
         } else {
-            qCCritical(logApp) << "Failed to create temporary ops log directory:" << opsLogPath;
+            qCCritical(logApp) << "Failed to create temporary ops log directory";
+            completedTasks += 9;
+            emit updatecurrentProcess(completedTasks);
         }
+
+        completedTasks += 1;
+        emit updatecurrentProcess(completedTasks);
     }
 
     zipClose(m_zipFile, "Exported by Deepin Log Viewer");

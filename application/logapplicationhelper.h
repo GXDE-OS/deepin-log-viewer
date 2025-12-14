@@ -62,6 +62,12 @@ public:
     //获取所有自定义日志文件列表(名称-路径)
     QList<QStringList> getCustomLogList();
 
+    //获取所有认证日志文件列表
+    QStringList getAuthLogList();
+
+    //刷新认证日志文件列表
+    void refreshAuthLogList();
+
     AppLogConfig  appLogConfig(const QString& app);
     bool isAppLogConfigExist(const QString& app);
 
@@ -80,6 +86,7 @@ private:
     void initAppLog();
     void initOtherLog();
     void initCustomLog();
+    void initAuthLog();
 
     void createDesktopFiles();
     void createLogFiles();
@@ -122,6 +129,10 @@ private:
      * @brief m_custom_log_list 所有自定义日志列表，每项包含名称、路径
      */
     QList<QStringList> m_custom_log_list;
+    /**
+     * @brief m_auth_log_list 所有认证日志文件列表
+     */
+    QStringList m_auth_log_list;
     /**
      * @brief m_desktop_files 所有符合条件的应用的desktop文件路径
      */

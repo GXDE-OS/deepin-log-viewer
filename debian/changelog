@@ -1,3 +1,36 @@
+deepin-log-viewer (6.5.25) unstable; urgency=medium
+
+  * fix: Fix fail to install in deepin os version
+  * fix: Fix log-view-service coredump
+
+ -- wangrong <wangrong@uniontech.com>  Thu, 04 Dec 2025 21:31:43 +0800
+
+deepin-log-viewer (6.5.24) unstable; urgency=medium
+
+  * fix: Fix datetime format issue
+  * Fix: [kwin-log] The kwin log is empty
+  * fix: improve auth log export and refresh functionality
+  * fix: Fix correct conditional logic for auth table creation
+  * refactor: Enhance command execution security and robustness
+  * feat: Add Depends for deepin-log-viewer
+  * refactor: Merge ops log exporting to com.deepin.logviewer dbus service
+  * chore: Update the DBus conf and service unit of the service
+  * refactor: Use SystemBusNameSubject in the Authorization check
+  * refactor: Delete unnecessary watcher
+  * refactor: Update CMake build flags and Debian packaging
+  * refactor: Enhance coredump reporter service and refine D-Bus authorization
+  * Refactor: Use QTemporaryDir for temporary log export
+
+ -- wangrong <wangrong@uniontech.com>  Thu, 27 Nov 2025 18:55:31 +0800
+
+deepin-log-viewer (6.5.23) unstable; urgency=medium
+
+  * chore: version to 6.5.23
+  * chore: update translations
+  * feat: Add authentication log support
+
+ -- re2zero <yangwu@uniontech.com>  Thu, 06 Nov 2025 20:02:04 +0800
+
 deepin-log-viewer (6.5.22) unstable; urgency=medium
 
   * feat: Add ops logs

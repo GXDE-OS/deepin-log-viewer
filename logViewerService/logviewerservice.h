@@ -45,6 +45,8 @@ public Q_SLOTS:
     Q_SCRIPTABLE QString executeCmd(const QString &cmd);
     Q_SCRIPTABLE QStringList whiteListOutPaths();
 
+    Q_SCRIPTABLE bool exportOpsLog(const QString &outDir, const QString &homeDir);
+
 public:
     // 获取用户家目录
     QStringList getHomePaths();
@@ -64,7 +66,7 @@ private:
     qint64 readFileAndReturnIndex(const QString &filePath, qint64 startLine, QList<uint64_t>& lineIndexes, bool reverseOrder);
 
 private:
-    bool checkAuthorization(const QString &actionId, qint64 applicationPid);
+    bool checkAuthorization(const QString &actionId);
 private:
     QTemporaryDir tmpDir;
     QProcess m_process;
@@ -73,11 +75,7 @@ private:
     QMap<QString, QString> m_commands;
     QMap<QString, std::pair<QString, QTextStream*>> m_logMap;
     QMap<QString, QList<uint64_t>> m_logLineIndex;
-    /**
-     * @brief isValidInvoker 检验调研者是否是日志
-     * @return
-     */
-    bool isValidInvoker(bool checkAuth = false);
+
     bool checkAuth(const QString &actionId);
     QByteArray processCatFile(const QString &filePath);
     void processCmdArgs(const QString &cmdStr, const QStringList &args);

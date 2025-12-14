@@ -207,7 +207,7 @@ void LogListView::initUI()
             m_logTypes.push_back(KERN_TREE_DATA);
         }
     }
-    if (Utils::isWayland()) {
+    if (Utils::isWayland() && QFile::exists(KWIN_TREE_DATA)) {
         item = new QStandardItem(QIcon::fromTheme("dp_start"), DApplication::translate("Tree", "Boot Log"));
         setIconSize(QSize(ICON_SIZE, ICON_SIZE));
         item->setToolTip(DApplication::translate("Tree", "Boot Log")); // add by Airy for bug 16245
@@ -216,7 +216,8 @@ void LogListView::initUI()
         item->setData(VListViewItemMargin, Dtk::MarginsRole);
         m_pModel->appendRow(item);
         m_logTypes.push_back(BOOT_KLU_TREE_DATA);
-    } else {
+    }
+    if (!Utils::isWayland()) {
         item = new QStandardItem(QIcon::fromTheme("dp_start"), DApplication::translate("Tree", "Boot Log"));
         setIconSize(QSize(ICON_SIZE, ICON_SIZE));
         item->setToolTip(DApplication::translate("Tree", "Boot Log")); // add by Airy for bug 16245
@@ -307,6 +308,26 @@ void LogListView::initUI()
         m_logTypes.push_back(LAST_TREE_DATA);
     }
 
+    // 认证日志 （与审计日志类似，默认显示）
+    item = new QStandardItem(QIcon::fromTheme("dp_customlog"), DApplication::translate("Tree", "Auth Log"));
+    setIconSize(QSize(ICON_SIZE, ICON_SIZE));
+    item->setToolTip(DApplication::translate("Tree", "Auth Log"));
+    item->setData(AUTH_TREE_DATA, ITEM_DATE_ROLE);
+    item->setSizeHint(QSize(ITEM_WIDTH, ITEM_HEIGHT));
+    item->setData(VListViewItemMargin, Dtk::MarginsRole);
+    m_pModel->appendRow(item);
+    m_logTypes.push_back(AUTH_TREE_DATA);
+
+    // 审计日志 （因dbus安全整改要求，isFileExist接口需要进行polkit鉴权，因此调整为程序启动时默认显示审计日志）
+    item = new QStandardItem(QIcon::fromTheme("dp_customlog"), DApplication::translate("Tree", "Audit Log"));
+    setIconSize(QSize(ICON_SIZE, ICON_SIZE));
+    item->setToolTip(DApplication::translate("Tree", "Audit Log"));
+    item->setData(AUDIT_TREE_DATA, ITEM_DATE_ROLE);
+    item->setSizeHint(QSize(ITEM_WIDTH, ITEM_HEIGHT));
+    item->setData(VListViewItemMargin, Dtk::MarginsRole);
+    m_pModel->appendRow(item);
+    m_logTypes.push_back(AUDIT_TREE_DATA);
+
     //other
     item = new QStandardItem(QIcon::fromTheme("dp_customlog", QIcon(":/customlog.svg")), DApplication::translate("Tree", "Other Log"));
     setIconSize(QSize(ICON_SIZE, ICON_SIZE));
@@ -323,15 +344,6 @@ void LogListView::initUI()
         initCustomLogItem();
     }
 
-    // 审计日志 （因dbus安全整改要求，isFileExist接口需要进行polkit鉴权，因此调整为程序启动时默认显示审计日志）
-    item = new QStandardItem(QIcon::fromTheme("dp_customlog"), DApplication::translate("Tree", "Audit Log"));
-    setIconSize(QSize(ICON_SIZE, ICON_SIZE));
-    item->setToolTip(DApplication::translate("Tree", "Audit Log"));
-    item->setData(AUDIT_TREE_DATA, ITEM_DATE_ROLE);
-    item->setSizeHint(QSize(ITEM_WIDTH, ITEM_HEIGHT));
-    item->setData(VListViewItemMargin, Dtk::MarginsRole);
-    m_pModel->appendRow(item);
-    m_logTypes.push_back(AUDIT_TREE_DATA);
 
     DLDBusHandler::instance(this)->whiteListOutPaths();
 
@@ -540,6 +552,8 @@ void LogListView::showRightMenu(const QPoint &pos, bool isUsePoint)
 
         if (pathData == KERN_TREE_DATA || pathData == BOOT_TREE_DATA || pathData == DPKG_TREE_DATA || pathData == XORG_TREE_DATA || pathData == KWIN_TREE_DATA || pathData == DNF_TREE_DATA || pathData == DMESG_TREE_DATA) {
             path = pathData;
+        } else if (pathData == AUTH_TREE_DATA) {
+            path = "/var/log/auth.log";
         } else if (pathData == APP_TREE_DATA) {
             path = _path_;
             g_clear->setEnabled(!path.isEmpty());
@@ -571,7 +585,14 @@ void LogListView::showRightMenu(const QPoint &pos, bool isUsePoint)
             dialog->addButton(QString(/*tr("确定")*/ DApplication::translate("Action", "Confirm")), true, DDialog::ButtonRecommend);
             int Ok = dialog->exec();
             if (Ok == DDialog::Accepted) {
-                truncateFile(path);
+                if (pathData == AUTH_TREE_DATA) {
+                    // For auth logs, use logViewerTruncate with pkexec
+                    QProcess prc;
+                    prc.start("pkexec", QStringList() << "logViewerTruncate" << path);
+                    prc.waitForFinished();
+                } else {
+                    truncateFile(path);
+                }
                 emit sigRefresh(index);
             }
         });
