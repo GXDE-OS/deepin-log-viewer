@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2019 - 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2019 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -143,6 +143,11 @@ void DLDBusHandler::quit()
     m_dbus->quit();
 }
 
+bool DLDBusHandler::isGetFileInfoError() const
+{
+    return m_bGetFileInfoError;
+}
+
 QStringList DLDBusHandler::getFileInfo(const QString &flag, bool unzip)
 {
     qCDebug(logApp) << "DLDBusHandler::getFileInfo called with flag:" << flag << "unzip:" << unzip;
@@ -150,9 +155,11 @@ QStringList DLDBusHandler::getFileInfo(const QString &flag, bool unzip)
     reply.waitForFinished();
     if (reply.isError()) {
         qCWarning(logApp) << "call dbus iterface 'getFileInfo()' failed. error info:" << reply.error().message();
+        m_bGetFileInfoError = true;
     } else {
         qCDebug(logApp) << "getFileInfo succeeded, file count:" << reply.value().size();
         filePath = reply.value();
+        m_bGetFileInfoError = false;
     }
     return filePath;
 }
@@ -172,22 +179,18 @@ QStringList DLDBusHandler::getOtherFileInfo(const QString &flag, bool unzip)
     return filePathList;
 }
 
-bool DLDBusHandler::exportOpsLog(const QString &outDir, const QString &userHomeDir)
+QString DLDBusHandler::exportOpsLog()
 {
-    qCDebug(logApp) << "DLDBusHandler::exportOpsLog called:" << outDir << userHomeDir;
-
     m_dbus->setTimeout(1200000);
-    QDBusPendingReply<bool> reply = m_dbus->exportOpsLog(outDir, userHomeDir);
+    QDBusPendingReply<QString> reply = m_dbus->exportOpsLog();
     reply.waitForFinished();
     m_dbus->setTimeout(-1);
 
     if (reply.isError()) {
         qCWarning(logApp) << "call dbus iterface 'exportOpsLog()' failed. error info:" << reply.error().message();
-        return false;
-    } else {
-        qCDebug(logApp) << "exportOpsLog succeeded:" << reply.value();
-        return reply.value();
+        return QString();
     }
+    return reply.value();
 }
 
 bool DLDBusHandler::exportLog(const QString &outDir, const QString &in, bool isFile)

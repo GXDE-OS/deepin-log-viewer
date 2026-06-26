@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2019 - 2022 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2019 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -17,11 +17,12 @@ public:
     QString readLog(const QString &filePath);
     QStringList readLogLinesInRange(const QString &filePath, qint64 startLine = 0, qint64 lineCount = 500, bool bReverse = true);
     QStringList getFileInfo(const QString &flag, bool unzip = true);
+    bool isGetFileInfoError() const;
     QStringList getOtherFileInfo(const QString &flag, bool unzip = true);
     int exitCode();
     void quit();
     bool exportLog(const QString &outDir, const QString &in, bool isFile);
-    bool exportOpsLog(const QString &outDir, const QString &userHomeDir);
+    QString exportOpsLog();
     bool isFileExist(const QString &filePath);
     quint64 getFileSize(const QString &filePath);
     qint64 getLineCount(const QString &filePath);
@@ -41,6 +42,7 @@ private:
     static DLDBusHandler *m_statichandeler;
     DeepinLogviewerInterface *m_dbus;
     QStringList filePath;
+    bool m_bGetFileInfoError = false;
 
     QTemporaryDir m_tempDir;
 };
