@@ -44,6 +44,8 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  dmidecode,
  udisks2,
  hwinfo
+Recommends:
+ systemd-coredump,
 Description: Log Viewer is a useful tool for viewing system logs.
  Log viewer is a tool that collects logs generated when an application
  is running, for example, logs generated when operating system and
