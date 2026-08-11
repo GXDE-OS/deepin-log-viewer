@@ -14,6 +14,7 @@
 
 #include "parsethread/parsethreadkern.h"
 #include "parsethread/parsethreadkwin.h"
+#include "parsethread/parsethreadgxwm.h"
 
 #include <DMessageManager>
 
@@ -46,6 +47,7 @@ LogFileParser::LogFileParser(QWidget *parent)
 {
     qCDebug(logApp) << "LogFileParser constructor called";
     qRegisterMetaType<QList<LOG_MSG_KWIN> > ("QList<LOG_MSG_KWIN>");
+    qRegisterMetaType<QList<LOG_MSG_GXWM> > ("QList<LOG_MSG_GXWM>");
     qRegisterMetaType<QList<LOG_MSG_XORG> > ("QList<LOG_MSG_XORG>");
     qRegisterMetaType<QList<LOG_MSG_DPKG> > ("QList<LOG_MSG_DPKG>");
     qRegisterMetaType<QList<LOG_MSG_BOOT> > ("QList<LOG_MSG_BOOT>");
@@ -215,6 +217,24 @@ int LogFileParser::parseByKwin(const KWIN_FILTERS &iKwinfilter)
     return index;
 }
 
+int LogFileParser::parseByGxwm(const GXWM_FILTERS &iGxwmfilter)
+{
+    qCDebug(logApp) << "Starting gxwm log parsing";
+    stopAllLoad();
+    LogAuthThread   *authThread = new LogAuthThread(this);
+    authThread->setType(Gxwm);
+    authThread->setFileterParam(iGxwmfilter);
+    connect(authThread, &LogAuthThread::gxwmFinished, this,
+            &LogFileParser::gxwmFinished);
+    connect(authThread, &LogAuthThread::gxwmData, this,
+            &LogFileParser::gxwmData);
+    connect(this, &LogFileParser::stopGxwm, authThread, &LogAuthThread::stopProccess);
+
+    int index = authThread->getIndex();
+    QThreadPool::globalInstance()->start(authThread);
+    return index;
+}
+
 int LogFileParser::parseByBoot()
 {
     qCDebug(logApp) << "Starting boot log parsing";
@@ -247,6 +267,9 @@ int LogFileParser::parse(LOG_FILTER_BASE &filter)
     } else if (filter.type == Kwin) {
         qCDebug(logApp) << "Starting kwin log parsing";
         parseWork = new ParseThreadKwin(this);
+    } else if (filter.type == Gxwm) {
+        qCDebug(logApp) << "Starting gxwm log parsing";
+        parseWork = new ParseThreadGxwm(this);
     }
     if (parseWork) {
         qCDebug(logApp) << "Setting filter for parse work";
@@ -474,6 +497,7 @@ void LogFileParser::stopAllLoad()
     emit stopDpkg();
     emit stopXlog();
     emit stopKwin();
+    emit stopGxwm();
     emit stopApp();
     emit stopJournal();
     emit stopJournalBoot();

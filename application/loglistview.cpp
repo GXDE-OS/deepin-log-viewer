@@ -261,6 +261,17 @@ void LogListView::initUI()
         m_pModel->appendRow(item);
         m_logTypes.push_back(KWIN_TREE_DATA);
     }
+    // wayland环境且日志文件存在才有 gxwm(gxde-wlcom) 日志
+    if (Utils::isWayland() && QFile::exists(GXWM_TREE_DATA)) {
+        item = new QStandardItem(QIcon::fromTheme("dp_kwin"), DApplication::translate("Tree", "GXWM Log"));
+        setIconSize(QSize(ICON_SIZE, ICON_SIZE));
+        item->setToolTip(DApplication::translate("Tree", "GXWM Log"));
+        item->setData(GXWM_TREE_DATA, ITEM_DATE_ROLE);
+        item->setSizeHint(QSize(ITEM_WIDTH, ITEM_HEIGHT));
+        item->setData(VListViewItemMargin, Dtk::MarginsRole);
+        m_pModel->appendRow(item);
+        m_logTypes.push_back(GXWM_TREE_DATA);
+    }
     if (!Utils::isWayland()) {
         item = new QStandardItem(QIcon::fromTheme("dp_x"), DApplication::translate("Tree", "Xorg Log"));
         setIconSize(QSize(ICON_SIZE, ICON_SIZE));
@@ -457,7 +468,7 @@ void LogListView::truncateFile(QString path_)
 {
     qCDebug(logApp) << "LogListView::truncateFile called with path:" << path_;
     QProcess prc;
-    if (path_ == KERN_TREE_DATA || path_ == BOOT_TREE_DATA || path_ == DPKG_TREE_DATA || path_ == KWIN_TREE_DATA) {
+    if (path_ == KERN_TREE_DATA || path_ == BOOT_TREE_DATA || path_ == DPKG_TREE_DATA || path_ == KWIN_TREE_DATA || path_ == GXWM_TREE_DATA) {
         QStringList files = getAllFiles(path_.append("*"));
         qCDebug(logApp) << "Truncating files:" << files;
         prc.start("pkexec", QStringList() << "logViewerTruncate" << files.join(' '));
@@ -550,7 +561,7 @@ void LogListView::showRightMenu(const QPoint &pos, bool isUsePoint)
         QString _path_ = g_path; //get app path
         QString path = "";
 
-        if (pathData == KERN_TREE_DATA || pathData == BOOT_TREE_DATA || pathData == DPKG_TREE_DATA || pathData == XORG_TREE_DATA || pathData == KWIN_TREE_DATA || pathData == DNF_TREE_DATA || pathData == DMESG_TREE_DATA) {
+        if (pathData == KERN_TREE_DATA || pathData == BOOT_TREE_DATA || pathData == DPKG_TREE_DATA || pathData == XORG_TREE_DATA || pathData == KWIN_TREE_DATA || pathData == GXWM_TREE_DATA || pathData == DNF_TREE_DATA || pathData == DMESG_TREE_DATA) {
             path = pathData;
         } else if (pathData == AUTH_TREE_DATA) {
             path = "/var/log/auth.log";

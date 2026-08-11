@@ -788,6 +788,10 @@ void FilterContent::slot_logCatelogueClicked(const QModelIndex &index)
         qCDebug(logApp) << "slot_logCatelogueClicked KWIN_TREE_DATA";
         m_currentType = KWIN_TREE_DATA;
         this->setSelectorVisible(false, false, false, false, false);
+    } else if (itemData.contains(GXWM_TREE_DATA)) {
+        qCDebug(logApp) << "slot_logCatelogueClicked GXWM_TREE_DATA";
+        m_currentType = GXWM_TREE_DATA;
+        this->setSelectorVisible(false, false, false, false, false);
     } else if (itemData.contains(BOOT_KLU_TREE_DATA)) {
         qCDebug(logApp) << "slot_logCatelogueClicked BOOT_KLU_TREE_DATA";
         m_currentType = BOOT_KLU_TREE_DATA;

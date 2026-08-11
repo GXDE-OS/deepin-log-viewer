@@ -87,6 +87,7 @@ public:
     void parseByNormal(const NORMAL_FILTERS &iNormalFiler);
 
     void parseByKwin(const KWIN_FILTERS &iKwinfilter);
+    void parseByGxwm(const GXWM_FILTERS &iGxwmfilter);
     void parseByOOC(const QString &path);
 
     void parseByAudit(const AUDIT_FILTERS &iAuditFilter);
@@ -111,6 +112,7 @@ public:
     static QList<LOG_MSG_JOURNAL> filterKern(const QString &iSearchStr, const QList<LOG_MSG_JOURNAL> &iList);
     static QList<LOG_MSG_XORG> filterXorg(const QString &iSearchStr, const QList<LOG_MSG_XORG> &iList);
     static QList<LOG_MSG_KWIN> filterKwin(const QString &iSearchStr, const QList<LOG_MSG_KWIN> &iList);
+    static QList<LOG_MSG_GXWM> filterGxwm(const QString &iSearchStr, const QList<LOG_MSG_GXWM> &iList);
     static QList<LOG_MSG_APPLICATOIN> filterApp(const QString &iSearchStr, const QList<LOG_MSG_APPLICATOIN> &iList);
     static QList<LOG_MSG_APPLICATOIN> filterApp(APP_FILTERS appFilter, const QList<LOG_MSG_APPLICATOIN> &iList);
     static QList<LOG_MSG_DNF> filterDnf(const QString &iSearchStr, const QList<LOG_MSG_DNF> &iList);
@@ -154,6 +156,8 @@ signals:
     void normalData(const QList<LOG_MSG_NORMAL>&);
     void kwinFinished();
     void kwinData(const QList<LOG_MSG_KWIN> &iKwinList);
+    void gxwmFinished();
+    void gxwmData(const QList<LOG_MSG_GXWM> &iGxwmList);
     /**
      * @brief appFinished 获取数据结束信号
      */
@@ -204,6 +208,8 @@ private slots:
     void slot_kernData(int index, QList<LOG_MSG_JOURNAL> list);
     void slot_kwinFinished(int index);
     void slot_kwinData(int index, QList<LOG_MSG_KWIN> list);
+    void slot_gxwmFinished(int index);
+    void slot_gxwmData(int index, QList<LOG_MSG_GXWM> list);
     void slot_dnfFinished(const QList<LOG_MSG_DNF> &list);
     void slot_dmesgFinished(const QList<LOG_MSG_DMESG> &list);
     void slot_journalFinished(int index);
@@ -384,6 +390,14 @@ public:
      * @brief m_kwinList 未经过筛选的开关机日志数据
      */
     QList<LOG_MSG_KWIN> m_kwinList;
+    /**
+     * @brief m_currentGxwmList add 经过筛选完成的gxwm(gxde-wlcom)日志数据
+     */
+    QList<LOG_MSG_GXWM> m_currentGxwmList;
+    /**
+     * @brief m_gxwmList 未经过筛选的gxwm日志数据
+     */
+    QList<LOG_MSG_GXWM> m_gxwmList;
 
 
     QList<LOG_MSG_COREDUMP> m_coredumpList;
@@ -421,6 +435,7 @@ private:
     int m_normalCurrentIndex {-1};
     int m_xorgCurrentIndex {-1};
     int m_kwinCurrentIndex {-1};
+    int m_gxwmCurrentIndex {-1};
     int m_appCurrentIndex {-1};
     int m_OOCCurrentIndex {-1};
     int m_auditCurrentIndex {-1};

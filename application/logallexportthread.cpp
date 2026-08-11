@@ -293,6 +293,9 @@ void LogAllExportThread::run()
         } else if (it.contains(KWIN_TREE_DATA, Qt::CaseInsensitive)) {
             data.logCategory = "kwin";
             data.files.append(KWIN_TREE_DATA);
+        } else if (it.contains(GXWM_TREE_DATA, Qt::CaseInsensitive)) {
+            data.logCategory = "gxwm";
+            data.files.append(GXWM_TREE_DATA);
         } else if (it.contains(APP_TREE_DATA, Qt::CaseInsensitive)) {
             data.logCategory = "apps";
             AppLogConfigList appConfigs = LogApplicationHelper::instance()->getAppLogConfigs();

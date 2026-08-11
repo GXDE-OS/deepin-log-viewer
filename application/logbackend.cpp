@@ -320,6 +320,13 @@ int LogBackend::exportTypeLogs(const QString &outDir, const QString &type)
         DLDBusHandler::instance()->exportLog(categoryOutPath, KWIN_TREE_DATA, true);
     }
     break;
+    case Gxwm: {
+        qCDebug(logApp) << "LogBackend::exportTypeLogs Gxwm";
+        resetCategoryOutputPath(categoryOutPath);
+
+        DLDBusHandler::instance()->exportLog(categoryOutPath, GXWM_TREE_DATA, true);
+    }
+    break;
     case XORG: {
         qCDebug(logApp) << "LogBackend::exportTypeLogs Xorg";
         QStringList logPaths = DLDBusHandler::instance()->getFileInfo("Xorg", false);
@@ -928,6 +935,40 @@ void LogBackend::slot_kwinData(int index, QList<LOG_MSG_KWIN> list)
     if (View == m_sessionType) {
         qCDebug(logApp) << "Emitting kwinData signal for view session";
         emit kwinData(m_currentKwinList);
+    }
+}
+
+void LogBackend::slot_gxwmFinished(int index)
+{
+    qCDebug(logApp) << "LogBackend::slot_gxwmFinished called with index:" << index;
+    if (m_flag != Gxwm || index != m_gxwmCurrentIndex) {
+        qCDebug(logApp) << "Gxwm finished signal ignored - flag or index mismatch";
+        return;
+    }
+    m_isDataLoadComplete = true;
+
+    if (View == m_sessionType) {
+        qCDebug(logApp) << "Emitting gxwmFinished signal for view session";
+        emit gxwmFinished();
+    } else if (Export == m_sessionType) {
+        qCDebug(logApp) << "Executing CLI export for gxwm";
+        executeCLIExport();
+    }
+}
+
+void LogBackend::slot_gxwmData(int index, QList<LOG_MSG_GXWM> list)
+{
+    qCDebug(logApp) << "LogBackend::slot_gxwmData called with index:" << index << "list size:" << list.size();
+    if (m_flag != Gxwm || index != m_gxwmCurrentIndex) {
+        qCDebug(logApp) << "Gxwm data signal ignored - flag or index mismatch";
+        return;
+    }
+    m_gxwmList.append(list);
+    m_currentGxwmList.append(filterGxwm(m_currentSearchStr, list));
+
+    if (View == m_sessionType) {
+        qCDebug(logApp) << "Emitting gxwmData signal for view session";
+        emit gxwmData(m_currentGxwmList);
     }
 }
 
@@ -1546,6 +1587,23 @@ QList<LOG_MSG_KWIN> LogBackend::filterKwin(const QString &iSearchStr, const QLis
     return rsList;
 }
 
+QList<LOG_MSG_GXWM> LogBackend::filterGxwm(const QString &iSearchStr, const QList<LOG_MSG_GXWM> &iList)
+{
+    qCDebug(logApp) << "LogBackend::filterGxwm called with iSearchStr:" << iSearchStr << "iList size:" << iList.size();
+    QList<LOG_MSG_GXWM> rsList;
+    if (iSearchStr.isEmpty()) {
+        qCDebug(logApp) << "FilterGxwm: iSearchStr is empty, returning iList";
+        return iList;
+    }
+    for (int i = 0; i < iList.size(); i++) {
+        LOG_MSG_GXWM msg = iList.at(i);
+        if (msg.msg.contains(iSearchStr, Qt::CaseInsensitive))
+            rsList.append(msg);
+    }
+    qCDebug(logApp) << "FilterGxwm: returning rsList with size:" << rsList.size();
+    return rsList;
+}
+
 QList<LOG_MSG_APPLICATOIN> LogBackend::filterApp(const QString &iSearchStr, const QList<LOG_MSG_APPLICATOIN> &iList)
 {
     qCDebug(logApp) << "LogBackend::filterApp called with iSearchStr:" << iSearchStr << "iList size:" << iList.size();
@@ -1906,6 +1964,16 @@ bool LogBackend::parseData(const LOG_FLAG &flag, const QString &period, const QS
         m_type2ThreadIndex[flag] = m_logFileParser.parse(filter);
     }
     break;
+    case Gxwm: {
+        qCDebug(logApp) << "LogBackend::parseData Gxwm";
+        LOG_FILTER_BASE filter;
+        filter.type = flag;
+        filter.segementIndex = 0;
+        m_type2Filter[flag] = filter;
+
+        m_type2ThreadIndex[flag] = m_logFileParser.parse(filter);
+    }
+    break;
     case XORG: {
         qCDebug(logApp) << "LogBackend::parseData XORG";
         XORG_FILTERS xorgFilter;
@@ -2008,6 +2076,11 @@ void LogBackend::executeCLIExport(const QString &originFilePath)
         case Kwin: {
             qCDebug(logApp) << "LogBackend::executeCLIExport Kwin";
             filePath = outPath + "/kwin.txt";
+        }
+            break;
+        case Gxwm: {
+            qCDebug(logApp) << "LogBackend::executeCLIExport Gxwm";
+            filePath = outPath + "/gxwm.txt";
         }
             break;
         case XORG: {
@@ -2168,6 +2241,12 @@ LOG_FLAG LogBackend::type2Flag(const QString &type, QString& error)
             flag = Kwin;
         else
             error = "Only wayland platform has kwin.log";
+    } else if (type == TYPE_GXWM) {
+        qCDebug(logApp) << "LogBackend::type2Flag Gxwm";
+        if (Utils::isWayland())
+            flag = Gxwm;
+        else
+            error = "Only wayland platform has gxde-wlcom.log";
     } else if (type == TYPE_XORG) {
         qCDebug(logApp) << "LogBackend::type2Flag XORG";
         if (!Utils::isWayland())
@@ -2287,6 +2366,8 @@ void LogBackend::clearAllDatalist()
     nortempList.clear();
     m_currentKwinList.clear();
     m_kwinList.clear();
+    m_currentGxwmList.clear();
+    m_gxwmList.clear();
     jBootList.clear();
     jBootListOrigin.clear();
     dnfList.clear();
@@ -2377,6 +2458,12 @@ void LogBackend::parseByKwin(const KWIN_FILTERS &iKwinfilter)
     m_kwinCurrentIndex = m_logFileParser.parseByKwin(iKwinfilter);
 }
 
+void LogBackend::parseByGxwm(const GXWM_FILTERS &iGxwmfilter)
+{
+    // qCDebug(logApp) << "LogBackend::parseByGxwm called with iGxwmfilter:" << iGxwmfilter;
+    m_gxwmCurrentIndex = m_logFileParser.parseByGxwm(iGxwmfilter);
+}
+
 void LogBackend::parseByOOC(const QString &path)
 {
     // qCDebug(logApp) << "LogBackend::parseByOOC called with path:" << path;
@@ -2441,6 +2528,9 @@ int LogBackend::getNextSegementIndex(LOG_FLAG type, bool bNext/* = true*/)
     } else if (type == Kwin) {
         qCDebug(logApp) << "LogBackend::getNextSegementIndex Kwin";
         totalLineCount = DLDBusHandler::instance(this)->getLineCount(KWIN_TREE_DATA);
+    } else if (type == Gxwm) {
+        qCDebug(logApp) << "LogBackend::getNextSegementIndex Gxwm";
+        totalLineCount = DLDBusHandler::instance(this)->getLineCount(GXWM_TREE_DATA);
     }
 
     // 计算分段段数
@@ -2516,8 +2606,8 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
     if (labels.isEmpty())
         labels = getLabels(m_flag);
 
-    if ((m_flag == KERN || m_flag == Kwin)) {
-        qCDebug(logApp) << "LogBackend::exportLogData KERN or Kwin";
+    if ((m_flag == KERN || m_flag == Kwin || m_flag == Gxwm)) {
+        qCDebug(logApp) << "LogBackend::exportLogData KERN or Kwin or Gxwm";
         // 初始化分段导出线程
         if (!m_pSegementExportThread) {
             m_pSegementExportThread = new LogSegementExportThread(this);
@@ -2581,6 +2671,7 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 break;
             case KERN:
             case Kwin:
+            case Gxwm:
                 PERF_PRINT_BEGIN("POINT-04", QString("format=txt count=%1").arg(m_type2LogData[m_flag].count()));
                 exportThread->exportToTxtPublic(filePath, m_type2LogData[m_flag], labels, m_flag);
                 break;
@@ -2638,6 +2729,7 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 break;
             case KERN:
             case Kwin:
+            case Gxwm:
                 PERF_PRINT_BEGIN("POINT-04", QString("format=html count=%1").arg(m_type2LogData[m_flag].count()));
                 exportThread->exportToHtmlPublic(filePath, m_type2LogData[m_flag], labels, m_flag);
                 break;
@@ -2691,6 +2783,7 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 break;
             case KERN:
             case Kwin:
+            case Gxwm:
                 PERF_PRINT_BEGIN("POINT-04", QString("format=doc count=%1").arg(m_type2LogData[m_flag].count()));
                 exportThread->exportToDocPublic(filePath, m_type2LogData[m_flag], labels, m_flag);
                 break;
@@ -2744,6 +2837,7 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 break;
             case KERN:
             case Kwin:
+            case Gxwm:
                 PERF_PRINT_BEGIN("POINT-04", QString("format=xls count=%1").arg(m_type2LogData[m_flag].count()));
                 exportThread->exportToXlsPublic(filePath, m_type2LogData[m_flag], labels, m_flag);
                 break;
@@ -3107,6 +3201,10 @@ QStringList LogBackend::getLabels(const LOG_FLAG &flag)
             labels << QCoreApplication::translate("Table", "Info");
     }
     break;
+    case Gxwm: {
+            labels << QCoreApplication::translate("Table", "Info");
+    }
+    break;
     case XORG: {
             labels << QCoreApplication::translate("Table", "Offset")
                    << QCoreApplication::translate("Table", "Info");
@@ -3174,6 +3272,7 @@ bool LogBackend::hasMatchedData(const LOG_FLAG &flag)
     }
     break;
     case Kwin:
+    case Gxwm:
     case KERN: {
         if (!m_type2LogData[flag].isEmpty()) {
             bMatchedData = true;

@@ -254,8 +254,8 @@ int main(int argc, char *argv[])
                             qCWarning(logApp) << QString("Export logs by %1, can only be filtered using 'period' or 'event' or 'keyword' parameters.").arg(type);
                         else
                             bRet = LogBackend::instance(&a)->exportTypeLogsByCondition(outDir, type, period, event, keyword);
-                    } else if (TYPE_XORG == type || TYPE_OTHER == type || TYPE_CUSTOM == type || TYPE_KWIN == type) {
-                        // Xorg、Kwin 只能按关键字导出
+                    } else if (TYPE_XORG == type || TYPE_OTHER == type || TYPE_CUSTOM == type || TYPE_KWIN == type || TYPE_GXWM == type) {
+                        // Xorg、Kwin、Gxwm 只能按关键字导出
                         if (!period.isEmpty() || !level.isEmpty() || !status.isEmpty() || !event.isEmpty())
                             qCWarning(logApp) << QString("Export logs by %1, can only be filtered using 'keyword' parameters.").arg(type);
                         else

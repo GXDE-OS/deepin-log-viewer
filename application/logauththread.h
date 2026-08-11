@@ -25,6 +25,7 @@ public:
     void setType(LOG_FLAG flag) { m_type = flag; }
     void setParseMap(bool parseMap) { m_parseMap = parseMap; }
     void setFileterParam(const KWIN_FILTERS &iFIlters) { m_kwinFilters = iFIlters; }
+    void setFileterParam(const GXWM_FILTERS &iFIlters) { m_gxwmFilters = iFIlters; }
     void setFileterParam(const XORG_FILTERS &iFIlters) { m_xorgFilters = iFIlters; }
     void setFileterParam(const DKPG_FILTERS &iFIlters) { m_dkpgFilters = iFIlters; }
     void setFileterParam(const KERN_FILTERS &iFIlters) { m_kernFilters = iFIlters; }
@@ -48,6 +49,7 @@ protected:
     void handleBoot();
     void handleKern();
     void handleKwin();
+    void handleGxwm();
     void handleXorg();
     void handleDkpg();
     void handleNormal();
@@ -81,6 +83,8 @@ signals:
     void bootData(int index, QList<LOG_MSG_BOOT> iDataList);
     void kwinFinished(int index);
     void kwinData(int index, QList<LOG_MSG_KWIN> iDataList);
+    void gxwmFinished(int index);
+    void gxwmData(int index, QList<LOG_MSG_GXWM> iDataList);
     void xorgFinished(int index);
     void xorgData(int index, QList<LOG_MSG_XORG> iDataList);
     void dpkgFinished(int index);
@@ -112,6 +116,10 @@ private:
      * @brief m_kwinFilters kwin日志筛选条件
      */
     KWIN_FILTERS m_kwinFilters;
+    /**
+     * @brief m_gxwmFilters gxwm(gxde-wlcom)日志筛选条件
+     */
+    GXWM_FILTERS m_gxwmFilters;
     /**
      * @brief m_xorgFilters xorg日志筛选条件
      */

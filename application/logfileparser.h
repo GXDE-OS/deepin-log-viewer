@@ -41,6 +41,7 @@ public:
     int parseByNormal(const NORMAL_FILTERS &iNormalFiler);   // add by Airy
 
     int parseByKwin(const KWIN_FILTERS &iKwinfilter);
+    int parseByGxwm(const GXWM_FILTERS &iGxwmfilter);
     int parseByOOC(const QString &path);
 
     int parseByAudit(const AUDIT_FILTERS &iAuditFilter);
@@ -77,6 +78,8 @@ signals:
     void normalData(int index, QList<LOG_MSG_NORMAL>);
     void kwinFinished(int index);
     void kwinData(int index, QList<LOG_MSG_KWIN> iKwinList);
+    void gxwmFinished(int index);
+    void gxwmData(int index, QList<LOG_MSG_GXWM> iGxwmList);
     /**
      * @brief appFinished 获取数据结束信号
      */
@@ -100,6 +103,7 @@ signals:
     void stopXlog();
     void stopNormal();
     void stopKwin();
+    void stopGxwm();
     void stopApp();
     void stopJournal();
     void stopJournalBoot();

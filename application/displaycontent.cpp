@@ -289,6 +289,10 @@ void DisplayContent::initConnections()
             Qt::QueuedConnection);
     connect(m_pLogBackend, &LogBackend::kwinData, this, &DisplayContent::slot_kwinData,
             Qt::QueuedConnection);
+    connect(m_pLogBackend, &LogBackend::gxwmFinished, this, &DisplayContent::slot_gxwmFinished,
+            Qt::QueuedConnection);
+    connect(m_pLogBackend, &LogBackend::gxwmData, this, &DisplayContent::slot_gxwmData,
+            Qt::QueuedConnection);
 
     connect(m_pLogBackend, &LogBackend::normalData, this, &DisplayContent::slot_normalData,
             Qt::QueuedConnection);
@@ -413,6 +417,13 @@ void DisplayContent::parseListToModel(const QList<QString> &list, QStandardItemM
             item->setData(KWIN_TABLE_DATA);
             item->setAccessibleText(QString("treeview_context_%1_%2").arg(i).arg(0));
             items << item;
+        } else if (type == Gxwm) {
+            LOG_MSG_BASE data;
+            data.fromJson(list[i]);
+            item = new DStandardItem(data.msg);
+            item->setData(GXWM_TABLE_DATA);
+            item->setAccessibleText(QString("treeview_context_%1_%2").arg(i).arg(0));
+            items << item;
         }
         oPModel->insertRow(oPModel->rowCount(), items);
     }
@@ -443,6 +454,8 @@ int DisplayContent::loadSegementPage(bool bNext/* = true*/, bool bReset/* = true
             createKernTableForm();
         else if (m_flag == Kwin)
             createKwinTableForm();
+        else if (m_flag == Gxwm)
+            createGxwmTableForm();
     }
 
     m_pLogBackend->loadSegementPage(nSegementIndex, bReset);
@@ -860,6 +873,16 @@ void DisplayContent::insertKwinTable(const QList<LOG_MSG_KWIN> &list, int start,
     parseListToModel(midList, m_pModel);
 }
 
+void DisplayContent::insertGxwmTable(const QList<LOG_MSG_GXWM> &list, int start, int end)
+{
+    qCDebug(logApp) << "DisplayContent::insertGxwmTable called with start:" << start << "end:" << end;
+    QList<LOG_MSG_GXWM> midList = list;
+    if (end >= start) {
+        midList = midList.mid(start, end - start);
+    }
+    parseListToModel(midList, m_pModel);
+}
+
 void DisplayContent::insertNormalTable(const QList<LOG_MSG_NORMAL> &list, int start, int end)
 {
     qCDebug(logApp) << "DisplayContent::insertNormalTable called with start:" << start << "end:" << end;
@@ -1183,6 +1206,41 @@ void DisplayContent::generateKwinFile(const KWIN_FILTERS &iFilters)
     filter.type = Kwin;
     filter.segementIndex = -1;
     m_pLogBackend->m_type2Filter[Kwin] = filter;
+    loadSegementPage();
+}
+
+void DisplayContent::createGxwmTableForm()
+{
+    qCDebug(logApp) << "DisplayContent::createGxwmTableForm called";
+    m_pModel->clear();
+    m_pModel->setColumnCount(1);
+    m_pModel->setHorizontalHeaderLabels(QStringList()
+                                        << DApplication::translate("Table", "Info"));
+}
+
+void DisplayContent::creatGxwmTable(const QList<LOG_MSG_GXWM> &list)
+{
+    qCDebug(logApp) << "DisplayContent::creatGxwmTable called with list size:" << list.count();
+    m_limitTag = 0;
+    setLoadState(DATA_COMPLETE);
+    int end = list.count() > SINGLE_LOAD ? SINGLE_LOAD : list.count();
+    insertGxwmTable(list, 0, end);
+    QItemSelectionModel *p = m_treeView->selectionModel();
+    if (p)
+        p->select(m_pModel->index(0, 0), QItemSelectionModel::Rows | QItemSelectionModel::Select);
+    slot_tableItemClicked(m_pModel->index(0, 0));
+}
+
+void DisplayContent::generateGxwmFile(const GXWM_FILTERS &iFilters)
+{
+    qCDebug(logApp) << "DisplayContent::generateGxwmFile called";
+    Q_UNUSED(iFilters)
+    m_pLogBackend->clearAllFilter();
+
+    LOG_FILTER_BASE filter;
+    filter.type = Gxwm;
+    filter.segementIndex = -1;
+    m_pLogBackend->m_type2Filter[Gxwm] = filter;
     loadSegementPage();
 }
 
@@ -1727,6 +1785,9 @@ void DisplayContent::slot_BtnSelected(int btnId, int lId, QModelIndex idx)
     } else if (treeData.contains(KWIN_TREE_DATA, Qt::CaseInsensitive)) {
         KWIN_FILTERS filter;
         generateKwinFile(filter);
+    } else if (treeData.contains(GXWM_TREE_DATA, Qt::CaseInsensitive)) {
+        GXWM_FILTERS filter;
+        generateGxwmFile(filter);
     } else if (treeData.contains(AUDIT_TREE_DATA, Qt::CaseInsensitive)) {
         generateAuditFile(BUTTONID(m_curBtnId), AUDITTYPE(m_curAuditType));
     } else if (treeData.contains(AUTH_TREE_DATA, Qt::CaseInsensitive)) {
@@ -1831,6 +1892,11 @@ void DisplayContent::slot_logCatelogueClicked(const QModelIndex &index)
         m_flag = Kwin;
         m_pLogBackend->setFlag(m_flag);
         KWIN_FILTERS filter;
+        filter.msg = "";
+    } else if (itemData.contains(GXWM_TREE_DATA, Qt::CaseInsensitive)) {
+        m_flag = Gxwm;
+        m_pLogBackend->setFlag(m_flag);
+        GXWM_FILTERS filter;
         filter.msg = "";
     } else if (itemData.contains(BOOT_KLU_TREE_DATA, Qt::CaseInsensitive)) {
         m_flag = BOOT_KLU;
@@ -2018,6 +2084,8 @@ void DisplayContent::slot_clearTable()
         createKernTableForm();
     else if (m_flag == Kwin)
         createKwinTableForm();
+    else if (m_flag == Gxwm)
+        createGxwmTableForm();
 }
 
 /**
@@ -2188,6 +2256,37 @@ void DisplayContent::slot_kwinData(const QList<LOG_MSG_KWIN> &list)
         creatKwinTable(list);
         m_firstLoadPageData = false;
         PERF_PRINT_END("POINT-03", "type=kwin");
+    }
+}
+
+void DisplayContent::slot_gxwmFinished()
+{
+    qCDebug(logApp) << "DisplayContent::slot_gxwmFinished called";
+    if (m_flag != Gxwm) {
+        qCDebug(logApp) << "m_flag != Gxwm";
+        return;
+    }
+    m_isDataLoadComplete = true;
+    if (m_pLogBackend->m_currentGxwmList.isEmpty()) {
+        qCDebug(logApp) << "m_pLogBackend->m_currentGxwmList is empty";
+        setLoadState(DATA_COMPLETE);
+        creatGxwmTable(m_pLogBackend->m_currentGxwmList);
+    }
+}
+
+void DisplayContent::slot_gxwmData(const QList<LOG_MSG_GXWM> &list)
+{
+    qCDebug(logApp) << "DisplayContent::slot_gxwmData called";
+    if (m_flag != Gxwm) {
+        qCDebug(logApp) << "m_flag != Gxwm";
+        return;
+    }
+
+    if (m_firstLoadPageData && !list.isEmpty()) {
+        qCDebug(logApp) << "DisplayContent::slot_gxwmData called with list size:" << list.count();
+        creatGxwmTable(list);
+        m_firstLoadPageData = false;
+        PERF_PRINT_END("POINT-03", "type=gxwm");
     }
 }
 
@@ -2634,7 +2733,8 @@ void DisplayContent::slot_vScrollValueChanged(int valuePixel)
         }
     }
     break;
-    case Kwin: {
+    case Kwin:
+    case Gxwm: {
         if (value < SINGLE_LOAD * rateValue - 20 || value < SINGLE_LOAD * rateValue) {
             if (m_limitTag >= rateValue)
                 return;
@@ -2778,6 +2878,7 @@ void DisplayContent::slot_searchResult(const QString &str)
     }
     break;
     case Kwin:
+    case Gxwm:
     case KERN: {
         qCDebug(logApp) << "DisplayContent::slot_searchResult KERN";
         qCDebug(logApp) << QString("search start... keyword:%1").arg(str);
@@ -2788,6 +2889,8 @@ void DisplayContent::slot_searchResult(const QString &str)
                 createKernTableForm();
             else if (m_flag == Kwin)
                 createKwinTableForm();
+            else if (m_flag == Gxwm)
+                createGxwmTableForm();
             createLogTable(m_pLogBackend->m_type2LogData[m_flag], m_flag);
         } else if (m_pLogBackend->m_type2Filter[m_flag].segementIndex > 0) {
             // 未在分段首页，重置索引，从头开始搜
@@ -2899,21 +3002,21 @@ void DisplayContent::slot_searchResult(const QString &str)
     //如果搜索结果为空要显示无搜索结果提示
     if (0 == m_pModel->rowCount()) {
         if (m_pLogBackend->m_currentSearchStr.isEmpty()) {
-            if (m_flag != KERN && m_flag != Kwin) {
-                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is empty and m_flag != KERN && m_flag != Kwin";
+            if (m_flag != KERN && m_flag != Kwin && m_flag != Gxwm) {
+                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is empty and m_flag != KERN && m_flag != Kwin && m_flag != Gxwm";
                 setLoadState(DATA_COMPLETE);
             }
         } else {
-            if ((m_flag != KERN && m_flag != Kwin) || !bHasNext) {
-                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin) || !bHasNext)";
+            if ((m_flag != KERN && m_flag != Kwin && m_flag != Gxwm) || !bHasNext) {
+                qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin && m_flag != Gxwm) || !bHasNext)";
                 setLoadState(DATA_NO_SEARCH_RESULT);
             }
         }
         m_detailWgt->cleanText();
         m_detailWgt->hideLine(true);
     } else {
-        if ((m_flag != KERN && m_flag != Kwin) || !bHasNext) {
-            qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin) || !bHasNext)";
+        if ((m_flag != KERN && m_flag != Kwin && m_flag != Gxwm) || !bHasNext) {
+            qCDebug(logApp) << "m_pLogBackend->m_currentSearchStr is not empty and ((m_flag != KERN && m_flag != Kwin && m_flag != Gxwm) || !bHasNext)";
             setLoadState(DATA_COMPLETE);
             m_detailWgt->hideLine(false);
         }
@@ -3194,6 +3297,31 @@ void DisplayContent::parseListToModel(QList<LOG_MSG_KWIN> iList, QStandardItemMo
         items.clear();
         item = new DStandardItem(iList[i].msg);
         item->setData(KWIN_TABLE_DATA);
+        item->setAccessibleText(QString("treeview_context_%1_%2").arg(i).arg(0));
+        items << item;
+        oPModel->insertRow(oPModel->rowCount(), items);
+    }
+}
+
+void DisplayContent::parseListToModel(QList<LOG_MSG_GXWM> iList, QStandardItemModel *oPModel)
+{
+    qCDebug(logApp) << "DisplayContent::parseListToModel called";
+    if (!oPModel) {
+        qCWarning(logApp) << "gxwm log parse model is empty";
+        return;
+    }
+
+    if (iList.isEmpty()) {
+        qCWarning(logApp) << "gxwm log parse model data is empty";
+        return;
+    }
+    DStandardItem *item = nullptr;
+    QList<QStandardItem *> items;
+    int listCount = iList.size();
+    for (int i = 0; i < listCount; i++) {
+        items.clear();
+        item = new DStandardItem(iList[i].msg);
+        item->setData(GXWM_TABLE_DATA);
         item->setAccessibleText(QString("treeview_context_%1_%2").arg(i).arg(0));
         items << item;
         oPModel->insertRow(oPModel->rowCount(), items);

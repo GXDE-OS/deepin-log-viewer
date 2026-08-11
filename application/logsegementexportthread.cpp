@@ -125,7 +125,7 @@ QString LogSegementExportThread::getDocTemplatePath()
     if (m_flag == KERN) {
         tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/4column.dfw";
         qCDebug(logApp) << "Using KERN template path";
-    } else if (m_flag == Kwin) {
+    } else if (m_flag == Kwin || m_flag == Gxwm) {
         tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/1column.dfw";
         qCDebug(logApp) << "Using Kwin template path";
     } else {
@@ -276,7 +276,7 @@ bool LogSegementExportThread::exportTxt()
             out << m_labels.value(col++, "") << ":" << jMsg.daemonName << " ";
             out << m_labels.value(col++, "") << ":" << jMsg.msg << " ";
             out << "\n";
-        } else if (m_flag == Kwin) {
+        } else if (m_flag == Kwin || m_flag == Gxwm) {
             out << m_labels.value(col++, "") << ":" << jMsg.msg << " ";
             out << "\n";
         }
@@ -339,7 +339,7 @@ bool LogSegementExportThread::exportHtml()
             html.write(info.toUtf8().data());
             info = QString("<td>%1</td>").arg(jMsg.msg);
             html.write(info.toUtf8().data());
-        } else if (m_flag == Kwin) {
+        } else if (m_flag == Kwin || m_flag == Gxwm) {
             QString info = QString("<td>%1</td>").arg(jMsg.msg);
             html.write(info.toUtf8().data());
         }
@@ -377,7 +377,7 @@ bool LogSegementExportThread::exportToDoc()
             m_pDocMerger->setClipboardValue("tableRow", QString("column2").toStdString(), message.hostName.toStdString());
             m_pDocMerger->setClipboardValue("tableRow", QString("column3").toStdString(), message.daemonName.toStdString());
             m_pDocMerger->setClipboardValue("tableRow", QString("column4").toStdString(), message.msg.toStdString());
-        } else if (m_flag == Kwin) {
+        } else if (m_flag == Kwin || m_flag == Gxwm) {
             m_pDocMerger->setClipboardValue("tableRow", QString("column1").toStdString(), message.msg.toStdString());
         }
         m_pDocMerger->paste("tableRow");
@@ -407,7 +407,7 @@ bool LogSegementExportThread::exportToXls()
             worksheet_write_string(m_pWorksheet, static_cast<lxw_row_t>(m_currentXlsRow), static_cast<lxw_col_t>(col++), message.hostName.toStdString().c_str(), nullptr);
             worksheet_write_string(m_pWorksheet, static_cast<lxw_row_t>(m_currentXlsRow), static_cast<lxw_col_t>(col++), message.daemonName.toStdString().c_str(), nullptr);
             worksheet_write_string(m_pWorksheet, static_cast<lxw_row_t>(m_currentXlsRow), static_cast<lxw_col_t>(col++), message.msg.toStdString().c_str(), nullptr);
-        } else if (m_flag == Kwin) {
+        } else if (m_flag == Kwin || m_flag == Gxwm) {
             worksheet_write_string(m_pWorksheet, static_cast<lxw_row_t>(m_currentXlsRow), static_cast<lxw_col_t>(col++), message.msg.toStdString().c_str(), nullptr);
         }
 

@@ -935,7 +935,7 @@ bool LogExportThread::exportToTxt(const QString &fileName, const QList<QString> 
                 //导出进度信号
                 sigProgress(i + 1, jList.count());
             }
-        } else if (flag == Kwin) {
+        } else if (flag == Kwin || flag == Gxwm) {
             for (int i = 0; i < jList.count(); i++) {
                 //导出逻辑启动停止控制，外部把m_canRunning置false时停止运行，抛出异常处理
                 if (!m_canRunning) {
@@ -1593,7 +1593,7 @@ bool LogExportThread::exportToDoc(const QString &fileName, const QList<QString> 
             tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/6column.dfw";
         } else if (iFlag == KERN) {
             tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/4column.dfw";
-        } else if (iFlag == Kwin) {
+        } else if (iFlag == Kwin || iFlag == Gxwm) {
             tempdir = "/usr/share/deepin-log-viewer/DocxTemplate/1column.dfw";
         } else {
             qCWarning(logApp) << "exportToDoc type is Wrong!";
@@ -1636,7 +1636,7 @@ bool LogExportThread::exportToDoc(const QString &fileName, const QList<QString> 
                 l_merger.setClipboardValue("tableRow", QString("column2").toStdString(), message.hostName.toStdString());
                 l_merger.setClipboardValue("tableRow", QString("column3").toStdString(), message.daemonName.toStdString());
                 l_merger.setClipboardValue("tableRow", QString("column4").toStdString(), message.msg.toStdString());
-            } else if (iFlag == Kwin) {
+            } else if (iFlag == Kwin || iFlag == Gxwm) {
                 l_merger.setClipboardValue("tableRow", QString("column1").toStdString(), message.msg.toStdString());
             }
             l_merger.paste("tableRow");
@@ -2614,7 +2614,7 @@ bool LogExportThread::exportToHtml(const QString &fileName, const QList<QString>
                 sigProgress(row + 1, jList.count());
             }
 
-        } else if (flag == Kwin) {
+        } else if (flag == Kwin || flag == Gxwm) {
             // 写入表头
             html.write("<tr>");
             for (int i = 0; i < labels.count(); ++i) {
@@ -3414,7 +3414,7 @@ bool LogExportThread::exportToXls(const QString &fileName, const QList<QString> 
                 worksheet_write_string(worksheet, static_cast<lxw_row_t>(currentXlsRow), static_cast<lxw_col_t>(col++), message.hostName.toStdString().c_str(), nullptr);
                 worksheet_write_string(worksheet, static_cast<lxw_row_t>(currentXlsRow), static_cast<lxw_col_t>(col++), message.daemonName.toStdString().c_str(), nullptr);
                 worksheet_write_string(worksheet, static_cast<lxw_row_t>(currentXlsRow), static_cast<lxw_col_t>(col++), message.msg.toStdString().c_str(), nullptr);
-            } else if (iFlag == Kwin) {
+            } else if (iFlag == Kwin || iFlag == Gxwm) {
                 worksheet_write_string(worksheet, static_cast<lxw_row_t>(currentXlsRow), static_cast<lxw_col_t>(col++), message.msg.toStdString().c_str(), nullptr);
             }
 
@@ -4049,7 +4049,7 @@ void LogExportThread::run()
     case TxtJOURNAL: {
         if (m_flag == JOURNAL)
             exportToTxt(m_fileName, m_jList, m_labels, m_flag);
-        else if (m_flag == KERN || m_flag == Kwin)
+        else if (m_flag == KERN || m_flag == Kwin || m_flag == Gxwm)
             exportToTxt(m_fileName, m_logDataList, m_labels, m_flag);
         break;
     }
@@ -4100,7 +4100,7 @@ void LogExportThread::run()
     case HtmlJOURNAL: {
         if (m_flag == JOURNAL)
             exportToHtml(m_fileName, m_jList, m_labels, m_flag);
-        else if (m_flag == KERN || m_flag == Kwin)
+        else if (m_flag == KERN || m_flag == Kwin || m_flag == Gxwm)
             exportToHtml(m_fileName, m_logDataList, m_labels, m_flag);
         break;
     }
@@ -4143,7 +4143,7 @@ void LogExportThread::run()
     case DocJOURNAL: {
         if (m_flag == JOURNAL)
             exportToDoc(m_fileName, m_jList, m_labels, m_flag);
-        else if (m_flag == KERN || m_flag == Kwin)
+        else if (m_flag == KERN || m_flag == Kwin || m_flag == Gxwm)
             exportToDoc(m_fileName, m_logDataList, m_labels, m_flag);
         break;
     }
@@ -4186,7 +4186,7 @@ void LogExportThread::run()
     case XlsJOURNAL: {
         if (m_flag == JOURNAL)
             exportToXls(m_fileName, m_jList, m_labels, m_flag);
-        else if (m_flag == KERN || m_flag == Kwin)
+        else if (m_flag == KERN || m_flag == Kwin || m_flag == Gxwm)
             exportToXls(m_fileName, m_logDataList, m_labels, m_flag);
         break;
     }

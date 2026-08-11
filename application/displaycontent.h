@@ -97,6 +97,9 @@ private:
     void createKwinTableForm();
     void creatKwinTable(const QList<LOG_MSG_KWIN> &list);
     void generateKwinFile(const KWIN_FILTERS &iFilters);
+    void createGxwmTableForm();
+    void creatGxwmTable(const QList<LOG_MSG_GXWM> &list);
+    void generateGxwmFile(const GXWM_FILTERS &iFilters);
 
     void createNormalTableForm();
     void createNormalTable(const QList<LOG_MSG_NORMAL> &list); // add by Airy
@@ -131,6 +134,7 @@ private:
     void insertXorgTable(const QList<LOG_MSG_XORG> &list, int start, int end);
     void insertBootTable(const QList<LOG_MSG_BOOT> &list, int start, int end);
     void insertKwinTable(const QList<LOG_MSG_KWIN> &list, int start, int end);
+    void insertGxwmTable(const QList<LOG_MSG_GXWM> &list, int start, int end);
     void insertNormalTable(const QList<LOG_MSG_NORMAL> &list, int start, int end);
     void insertOOCTable(const QList<LOG_FILE_OTHERORCUSTOM> &list, int start, int end);
     void insertAuditTable(const QList<LOG_MSG_AUDIT> &list, int start, int end);
@@ -198,6 +202,8 @@ public slots:
     void slot_kernData(const QList<LOG_MSG_JOURNAL> &list);
     void slot_kwinFinished();
     void slot_kwinData(const QList<LOG_MSG_KWIN> &list);
+    void slot_gxwmFinished();
+    void slot_gxwmData(const QList<LOG_MSG_GXWM> &list);
     void slot_dnfFinished(const QList<LOG_MSG_DNF> &list);
     void slot_dmesgFinished(const QList<LOG_MSG_DMESG> &list);
     void slot_journalFinished();
@@ -235,6 +241,7 @@ public slots:
     void parseListToModel(QList<LOG_MSG_JOURNAL> iList, QStandardItemModel *oPModel);
     void parseListToModel(QList<LOG_MSG_NORMAL> iList, QStandardItemModel *oPModel);
     void parseListToModel(QList<LOG_MSG_KWIN> iList, QStandardItemModel *oPModel);
+    void parseListToModel(QList<LOG_MSG_GXWM> iList, QStandardItemModel *oPModel);
     void parseListToModel(QList<LOG_MSG_DNF> iList, QStandardItemModel *oPModel);
     void parseListToModel(QList<LOG_MSG_DMESG> iList, QStandardItemModel *oPModel);
     void parseListToModel(QList<LOG_FILE_OTHERORCUSTOM> iList, QStandardItemModel *oPModel);

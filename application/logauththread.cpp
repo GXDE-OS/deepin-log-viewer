@@ -196,6 +196,10 @@ void LogAuthThread::run()
         qCDebug(logApp) << "LogAuthThread::run handleKwin";
         handleKwin();
         break;
+    case Gxwm:
+        qCDebug(logApp) << "LogAuthThread::run handleGxwm";
+        handleGxwm();
+        break;
     case XORG:
         qCDebug(logApp) << "LogAuthThread::run handleXorg";
         handleXorg();
@@ -562,6 +566,75 @@ void LogAuthThread::handleKwin()
         emit kwinData(m_threadCount, kwinList);
     }
     emit kwinFinished(m_threadCount);
+}
+
+/**
+ * @brief LogAuthThread::handleGxwm 获取gxwm(gxde-wlcom)日志逻辑
+ */
+void LogAuthThread::handleGxwm()
+{
+    qCDebug(logApp) << "LogAuthThread::handleGxwm started";
+    QFile file(GXWM_TREE_DATA);
+    if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+        return;
+    }
+    QList<LOG_MSG_GXWM> gxwmList;
+    if (!file.exists()) {
+        qCWarning(logApp) << "Gxwm log file does not exist:" << GXWM_TREE_DATA;
+        emit gxwmFinished(m_threadCount);
+        return;
+    }
+    if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+        return;
+    }
+    initProccess();
+    m_process->start("cat", QStringList() << GXWM_TREE_DATA);
+    m_process->waitForFinished(-1);
+    if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+        return;
+    }
+    QByteArray outByte = m_process->readAllStandardOutput();
+    if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+        return;
+    }
+    qCDebug(logApp) << "Read" << outByte.size() << "bytes from gxwm log file";
+
+    QStringList strList =  QString(Utils::replaceEmptyByteArray(outByte)).split('\n', SKIP_EMPTY_PARTS);
+
+    for (int i = strList.size() - 1; i >= 0 ; --i)  {
+        QString str = strList.at(i);
+        if (!m_canRun) {
+            qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+            return;
+        }
+        if (str.trimmed().isEmpty()) {
+            continue;
+        }
+        LOG_MSG_GXWM gxwmMsg;
+        gxwmMsg.msg = str;
+        gxwmList.append(gxwmMsg);
+        //每获得500个数据就发出信号给控件加载
+        if (gxwmList.count() % SINGLE_READ_CNT == 0) {
+            // qCDebug(logApp) << "Emitting gxwm data, count:" << gxwmList.count();
+            emit gxwmData(m_threadCount, gxwmList);
+            gxwmList.clear();
+        }
+    }
+
+    if (!m_canRun) {
+        qCDebug(logApp) << "Thread stopped before processing gxwm logs";
+        return;
+    }
+    //最后可能有余下不足500的数据
+    if (gxwmList.count() >= 0) {
+        qCDebug(logApp) << "Emitting gxwm data, count:" << gxwmList.count();
+        emit gxwmData(m_threadCount, gxwmList);
+    }
+    emit gxwmFinished(m_threadCount);
 }
 
 /**

@@ -177,6 +177,7 @@ set (APP_CPP_FILES
      parsethread/parsethreadbase.cpp
      parsethread/parsethreadkern.cpp
      parsethread/parsethreadkwin.cpp
+     parsethread/parsethreadgxwm.cpp
     )
 set (APP_QRC_FILES
 assets/resources.qrc
@@ -219,6 +220,7 @@ set (APP_HEADERS_FILES
     parsethread/parsethreadbase.h
     parsethread/parsethreadkern.h
     parsethread/parsethreadkwin.h
+    parsethread/parsethreadgxwm.h
     qtcompat.h
     )
 

@@ -885,6 +885,12 @@ void Utils::exportUserPermissionAppLogs(const QString &outDir, const QString &us
     // 窗口管理器
     appendToFile(outDir + "/app/kwin/glxinfo.log", executeCmd("glxinfo", { "-display", qEnvironmentVariable("DISPLAY"), "-B" }));
     appendToFile(outDir + "/app/kwin/kwin_info.log", executeCmd("apt", { "policy", "kwin-x11", "dde-kwin" }));
+    // gxde-wlcom 日志（GXWM）
+    {
+        QFile f(userHomeDir + "/.log/gxde-wlcom.log");
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text))
+            appendToFile(outDir + "/app/gxwm/gxde-wlcom.log", f.readAll());
+    }
 
     // 安卓容器
     safeCpSkipSymlinks({userHomeDir + "/log/AospLog.log",

@@ -20,6 +20,7 @@
 #define APP_TABLE_DATA "applicationItemData"
 #define LAST_TABLE_DATA "lastItemData"  // add by Airy
 #define KWIN_TABLE_DATA "kwinItemData"
+#define GXWM_TABLE_DATA "gxwmItemData"
 #define DMESG_TABLE_DATA "dmesgItemData"
 #define DNF_TABLE_DATA "dnfItemData"
 #define OOC_TABLE_DATA "OOCItemData"
@@ -32,6 +33,7 @@
 #define DPKG_TREE_DATA "/var/log/dpkg.log"
 #define XORG_TREE_DATA "/var/log/Xorg.0.log"
 #define KWIN_TREE_DATA Utils::homePath + "/.kwin.log"
+#define GXWM_TREE_DATA Utils::homePath + "/.log/gxde-wlcom.log"
 #define BOOT_TREE_DATA "/var/log/boot.log"
 #define KERN_TREE_DATA "/var/log/kern.log"
 #define APP_TREE_DATA "application"
@@ -56,6 +58,7 @@
 #define TYPE_DPKG "dpkg"
 #define TYPE_DNF "dnf"
 #define TYPE_KWIN "kwin"
+#define TYPE_GXWM "gxwm"
 #define TYPE_XORG "xorg"
 #define TYPE_APP "app"
 #define TYPE_COREDUMP "coredump"
@@ -152,6 +155,9 @@ struct LOG_MSG_NORMAL {
     QString msg;
 };
 struct LOG_MSG_KWIN {
+    QString msg;
+};
+struct LOG_MSG_GXWM {
     QString msg;
 };
 struct LOG_FILE_OTHERORCUSTOM {
@@ -286,6 +292,10 @@ struct TIME_RANGE {
 
 //kwin筛选条件，kwin日志只有信息，没有任何可筛选的，但是先放在这，以后统一化
 struct KWIN_FILTERS {
+    QString msg;
+};
+//gxwm(gxde-wlcom)筛选条件，与kwin一致，只有信息
+struct GXWM_FILTERS {
     QString msg;
 };
 struct XORG_FILTERS {
@@ -438,6 +448,7 @@ enum LOG_FLAG {
     APP,
     Normal,
     Kwin,
+    Gxwm,
     BOOT_KLU,
     Dnf,
     Dmesg,

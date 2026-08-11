@@ -516,6 +516,10 @@ void logDetailInfoWidget::slot_DetailInfo(const QModelIndex &index, QStandardIte
         qCDebug(logApp) << "Displaying KWIN log details";
         fillDetailInfo("Kwin", hostname, "", "", QModelIndex(),
                        index.siblingAtColumn(0).data().toString());
+    } else if (dataStr.contains(GXWM_TABLE_DATA)) {
+        qCDebug(logApp) << "Displaying GXWM log details";
+        fillDetailInfo("Gxwm", hostname, "", "", QModelIndex(),
+                       index.siblingAtColumn(0).data().toString());
     } else if (dataStr.contains(BOOT_KLU_TABLE_DATA)) {
         qCDebug(logApp) << "Displaying BOOT_KLU log details";
         fillDetailInfo(index.siblingAtColumn(1).data().toString(),
