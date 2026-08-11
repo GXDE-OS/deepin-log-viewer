@@ -1,3 +1,9 @@
+deepin-log-viewer (6.5.35gxde1) UNRELEASED; urgency=medium
+
+  * 支持读取GXWM日志
+
+ -- gfdgd_xi <3025613752@qq.com>  Tue, 11 Aug 2026 09:42:57 +0800
+
 deepin-log-viewer (6.5.35) unstable; urgency=medium
 
   * fix(security): add polkit auth check to getFileSize D-Bus method
