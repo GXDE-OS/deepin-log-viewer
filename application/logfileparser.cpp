@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2019 - 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2019 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -143,7 +143,7 @@ int LogFileParser::parseByDpkg(const DKPG_FILTERS &iDpkgFilter)
     stopAllLoad();
     LogAuthThread   *authThread = new LogAuthThread(this);
     authThread->setType(DPKG);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("dpkg");
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("dpkg");
     //    const QString&str="/var/log/kern";
     authThread->setFilePath(filePath);
     authThread->setFileterParam(iDpkgFilter);
@@ -165,7 +165,7 @@ int LogFileParser::parseByXlog(const XORG_FILTERS &iXorgFilter)    // modifed by
     stopAllLoad();
     LogAuthThread   *authThread = new LogAuthThread(this);
     authThread->setType(XORG);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("Xorg");
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("Xorg");
     authThread->setFilePath(filePath);
     authThread->setFileterParam(iXorgFilter);
     connect(authThread, &LogAuthThread::proccessError, this,
@@ -242,7 +242,7 @@ int LogFileParser::parseByBoot()
     LogAuthThread   *authThread = new LogAuthThread(this);
     authThread->setType(BOOT);
 
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("boot");
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("boot");
     authThread->setFilePath(filePath);
     connect(authThread, &LogAuthThread::bootFinished, this,
             &LogFileParser::bootFinished);
@@ -288,7 +288,7 @@ int LogFileParser::parseByKern(const KERN_FILTERS &iKernFilter)
     stopAllLoad();
     LogAuthThread   *authThread = new LogAuthThread(this);
     authThread->setType(KERN);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("kern", false);
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("kern", false);
     authThread->setFileterParam(iKernFilter);
     authThread->setFilePath(filePath);
     connect(authThread, &LogAuthThread::kernFinished, this,
@@ -373,7 +373,7 @@ void LogFileParser::parseByDnf(DNF_FILTERS iDnfFilter)
     stopAllLoad();
     LogAuthThread *authThread = new LogAuthThread(this);
     authThread->setType(Dnf);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("dnf");
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("dnf");
     authThread->setFilePath(filePath);
     authThread->setFileterParam(iDnfFilter);
     connect(authThread, &LogAuthThread::proccessError, this,
@@ -391,7 +391,7 @@ void LogFileParser::parseByDmesg(DMESG_FILTERS iDmesgFilter)
     stopAllLoad();
     LogAuthThread *authThread = new LogAuthThread(this);
     authThread->setType(Dmesg);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("dmesg");
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("dmesg");
     authThread->setFilePath(filePath);
     authThread->setFileterParam(iDmesgFilter);
     connect(authThread, &LogAuthThread::proccessError, this,
@@ -429,7 +429,7 @@ int LogFileParser::parseByAudit(const AUDIT_FILTERS &iAuditFilter)
     stopAllLoad();
     LogAuthThread   *authThread = new LogAuthThread(this);
     authThread->setType(Audit);
-    QStringList filePath = DLDBusHandler::instance(this)->getFileInfo("audit", false);
+    QStringList filePath = DLDBusHandler::instance()->getFileInfo("audit", false);
     authThread->setFileterParam(iAuditFilter);
     authThread->setFilePath(filePath);
     connect(authThread, &LogAuthThread::auditFinished, this,

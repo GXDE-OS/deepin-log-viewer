@@ -281,7 +281,7 @@ void LogAuthThread::handleBoot()
             }
         }
 
-        QString byte = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
+        QString byte = DLDBusHandler::instance()->readLog(m_FilePath.at(i));
         byte.replace('\u0000', "").replace("\x01", "");
         QStringList strList = byte.split('\n', SKIP_EMPTY_PARTS);
 
@@ -382,7 +382,7 @@ void LogAuthThread::handleKern()
         //如果是压缩文件，对其解压缩
         QString filePath = m_FilePath.at(i);
         if(QString::compare(QFileInfo(filePath).suffix(), "gz", Qt::CaseInsensitive) == 0){
-            QStringList filePathList = DLDBusHandler::instance(this)->getFileInfo(filePath);
+            QStringList filePathList = DLDBusHandler::instance()->getFileInfo(filePath);
             if(filePathList.size()){
                 filePath = filePathList.at(0);
             }else {
@@ -390,10 +390,10 @@ void LogAuthThread::handleKern()
             }
         }
 
-        auto token = DLDBusHandler::instance(this)->openLogStream(filePath);
+        auto token = DLDBusHandler::instance()->openLogStream(filePath);
         QString byte;
         while(1) {
-            auto temp = DLDBusHandler::instance(this)->readLogInStream(token);
+            auto temp = DLDBusHandler::instance()->readLogInStream(token);
 
             if(temp.isEmpty()) {
                 break;
@@ -658,7 +658,7 @@ void LogAuthThread::handleXorg()
             return;
         }
         qCDebug(logApp) << "Processing Xorg file:" << m_FilePath.at(i);
-        QString m_Log = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
+        QString m_Log = DLDBusHandler::instance()->readLog(m_FilePath.at(i));
         // dbus鉴权失败，不再继续解析
         if (m_Log.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {
             qCDebug(logApp) << "Xorg log file is not allowed to configrate firewall";
@@ -736,7 +736,7 @@ void LogAuthThread::handleDkpg()
         }
         qCDebug(logApp) << "Processing DPKG file:" << m_FilePath.at(i);
 
-        QString m_Log = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
+        QString m_Log = DLDBusHandler::instance()->readLog(m_FilePath.at(i));
         // dbus鉴权失败，不再继续解析
         if (m_Log.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {
             emit dpkgFinished(m_threadCount);
@@ -969,7 +969,7 @@ void LogAuthThread::handleDnf()
             return;
         }
         qCDebug(logApp) << "Processing DNF file:" << m_FilePath.at(i);
-        QByteArray outByte = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i)).toUtf8();
+        QByteArray outByte = DLDBusHandler::instance()->readLog(m_FilePath.at(i)).toUtf8();
         // dbus鉴权失败，不再继续解析
         if (outByte.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {
             qCDebug(logApp) << "DNF log file is not allowed to configrate firewall";
@@ -1145,7 +1145,7 @@ void LogAuthThread::handleAudit()
     QList<LOG_MSG_AUDIT> aList;
     for (int i = 0; i < m_FilePath.count(); i++) {
         if (!m_FilePath.at(i).contains("txt")) {
-            if (!DLDBusHandler::instance(this)->isFileExist(m_FilePath.at(i))) {
+            if (!DLDBusHandler::instance()->isFileExist(m_FilePath.at(i))) {
                 qCDebug(logApp) << "Audit log file does not exist:" << m_FilePath.at(i);
                 emit auditFinished(m_threadCount);
                 return;
@@ -1205,11 +1205,11 @@ void LogAuthThread::handleAudit()
         }
 
         QString byte;
-        if (Utils::convertToMB(DLDBusHandler::instance(this)->getFileSize(m_FilePath.at(i))) > DBUS_THRESHOLD_MAX) {
+        if (Utils::convertToMB(DLDBusHandler::instance()->getFileSize(m_FilePath.at(i))) > DBUS_THRESHOLD_MAX) {
             // 日志文件超过100MB，使用文本流读取日志数据，避免DBUS接口被数据流量撑爆
-            auto token = DLDBusHandler::instance(this)->openLogStream(m_FilePath.at(i));
+            auto token = DLDBusHandler::instance()->openLogStream(m_FilePath.at(i));
             while(1) {
-                auto temp = DLDBusHandler::instance(this)->readLogInStream(token);
+                auto temp = DLDBusHandler::instance()->readLogInStream(token);
 
                 if(temp.isEmpty()) {
                     break;
@@ -1218,7 +1218,7 @@ void LogAuthThread::handleAudit()
                 byte += temp;
             }
         } else {
-            byte = DLDBusHandler::instance(this)->readLog(m_FilePath.at(i));
+            byte = DLDBusHandler::instance()->readLog(m_FilePath.at(i));
         }
 
         byte.replace('\u0000', "").replace("\x01", "");
@@ -1442,7 +1442,7 @@ void LogAuthThread::handleAuth()
         }
         
         // Read file content using DBus
-        QString m_Log = DLDBusHandler::instance(this)->readLog(filePath);
+        QString m_Log = DLDBusHandler::instance()->readLog(filePath);
         
         // Check for DBus authentication failure
         if (m_Log.endsWith("is not allowed to configrate firewall. checkAuthorization failed.")) {

@@ -1,9 +1,22 @@
-deepin-log-viewer (6.5.35gxde2) UNRELEASED; urgency=medium
+deepin-log-viewer (6.5.37) unstable; urgency=medium
 
-  * 支持读取GXWM日志
-  * 新增推荐依赖systemd-coredump
+  * chore: Sync by
+    https://github.com/linuxdeepin/.github/commit/a300f8523d4876677112ed
+    ab6a0772f7ad112976
+  * fix(dbus): reimplement DLDBusHandler as a standard thread-safe
+    singleton
 
- -- gfdgd_xi <3025613752@qq.com>  Tue, 11 Aug 2026 15:54:29 +0800
+ -- liuzheng <liuzheng@uniontech.com>  Fri, 21 Aug 2026 09:07:28 +0800
+
+deepin-log-viewer (6.5.36) unstable; urgency=medium
+
+  * fix(service): validate QDBusReply in checkAuth to prevent Polkit
+    bypass
+  * fix(service): use random UUID token and add auth check for
+    readLogInStream
+  * fix(logviewerservice): add polkit auth check to exitCode DBus method
+
+ -- wangrong <wangrong@uniontech.com>  Fri, 14 Aug 2026 09:32:04 +0800
 
 deepin-log-viewer (6.5.35) unstable; urgency=medium
 
