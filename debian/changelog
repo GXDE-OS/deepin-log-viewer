@@ -1,3 +1,9 @@
+deepin-log-viewer (6.5.37gxde1) UNRELEASED; urgency=medium
+
+  * 修复编译问题
+
+ -- gfdgd_xi <3025613752@qq.com>  Mon, 24 Aug 2026 15:30:56 +0800
+
 deepin-log-viewer (6.5.37) unstable; urgency=medium
 
   * chore: Sync by
