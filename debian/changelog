@@ -1,8 +1,8 @@
-deepin-log-viewer (6.5.37gxde1) UNRELEASED; urgency=medium
+deepin-log-viewer (6.5.38) unstable; urgency=medium
 
-  * 修复编译问题
+  * fix(security): chmod target must be export path, not its parent dir
 
- -- gfdgd_xi <3025613752@qq.com>  Mon, 24 Aug 2026 15:30:56 +0800
+ -- wangrong <wangrong@uniontech.com>  Thu, 27 Aug 2026 19:53:06 +0800
 
 deepin-log-viewer (6.5.37) unstable; urgency=medium
 
