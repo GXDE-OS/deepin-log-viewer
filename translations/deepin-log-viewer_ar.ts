@@ -1,5 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
-<TS version="2.1" language="ar">
+<?xml version="1.0" ?><!DOCTYPE TS><TS version="2.1" language="ar">
 <context>
     <name>Action</name>
     <message>
@@ -811,8 +810,14 @@
         <translation>سجل آخر</translation>
     </message>
     <message>
-        <location filename="../application/loglistview.cpp" line="372" />
-        <location filename="../application/loglistview.cpp" line="376" />
+        <location filename="../application/loglistview.cpp" line="311"/>
+        <location filename="../application/loglistview.cpp" line="313"/>
+        <source>Auth Log</source>
+        <translation>سجل التحقق</translation>
+    </message>
+    <message>
+        <location filename="../application/loglistview.cpp" line="360"/>
+        <location filename="../application/loglistview.cpp" line="364"/>
         <source>Custom Log</source>
         <translation>سجل مخصص</translation>
     </message>

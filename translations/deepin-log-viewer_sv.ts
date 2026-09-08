@@ -1,5 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
-<TS version="2.1" language="sv">
+<?xml version="1.0" ?><!DOCTYPE TS><TS version="2.1" language="sv">
 <context>
     <name>Action</name>
     <message>
@@ -467,7 +466,7 @@
         <location filename="../application/main.cpp" line="343" />
         <location filename="../application/main.cpp" line="344" />
         <source>Log Viewer</source>
-        <translation>Loggvisare</translation>
+        <translation>Log Viewer</translation>
     </message>
     <message>
         <location filename="../application/main.cpp" line="346" />
@@ -813,8 +812,14 @@
         <translation>Annan logg</translation>
     </message>
     <message>
-        <location filename="../application/loglistview.cpp" line="372" />
-        <location filename="../application/loglistview.cpp" line="376" />
+        <location filename="../application/loglistview.cpp" line="311"/>
+        <location filename="../application/loglistview.cpp" line="313"/>
+        <source>Auth Log</source>
+        <translation>Autentiseringslogg</translation>
+    </message>
+    <message>
+        <location filename="../application/loglistview.cpp" line="360"/>
+        <location filename="../application/loglistview.cpp" line="364"/>
         <source>Custom Log</source>
         <translation>Anpassad logg</translation>
     </message>
@@ -847,7 +852,15 @@
         <translation>Du har inte tillstånd att visa det</translation>
     </message>
     <message>
-        <location filename="../application/displaycontent.cpp" line="3640" />
+        <location filename="../application/displaycontent.cpp" line="126"/>
+        <location filename="../application/displaycontent.cpp" line="3510"/>
+        <source>Security level for the current system: high
+ audit only administrators can view the audit log</source>
+        <translation>Säkerhetsnivå för det aktuella systemet: hög
+ endast administratörer kan visa auditloggen</translation>
+    </message>
+    <message>
+        <location filename="../application/displaycontent.cpp" line="3512"/>
         <source>Audit log is not exist.</source>
         <translation>Auditlogg finns inte.</translation>
     </message>
