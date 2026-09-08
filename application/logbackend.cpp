@@ -2527,10 +2527,10 @@ int LogBackend::getNextSegementIndex(LOG_FLAG type, bool bNext/* = true*/)
         }
     } else if (type == Kwin) {
         qCDebug(logApp) << "LogBackend::getNextSegementIndex Kwin";
-        totalLineCount = DLDBusHandler::instance(this)->getLineCount(KWIN_TREE_DATA);
+        totalLineCount = DLDBusHandler::instance()->getLineCount(KWIN_TREE_DATA);
     } else if (type == Gxwm) {
         qCDebug(logApp) << "LogBackend::getNextSegementIndex Gxwm";
-        totalLineCount = DLDBusHandler::instance(this)->getLineCount(GXWM_TREE_DATA);
+        totalLineCount = DLDBusHandler::instance()->getLineCount(GXWM_TREE_DATA);
     }
 
     // 计算分段段数

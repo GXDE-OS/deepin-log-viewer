@@ -64,7 +64,7 @@ void ParseThreadGxwm::handleGxwm()
 
     qint64 gStartLine = m_filter.segementIndex * SEGEMENT_SIZE;
     qCDebug(logApp) << "Global start line:" << gStartLine;
-    qint64 lineCount = DLDBusHandler::instance(this)->getLineCount(GXWM_TREE_DATA);
+    qint64 lineCount = DLDBusHandler::instance()->getLineCount(GXWM_TREE_DATA);
     qCDebug(logApp) << "File line count:" << lineCount;
 
     // 获取全局起始行在当前文件的相对起始行位置
@@ -75,7 +75,7 @@ void ParseThreadGxwm::handleGxwm()
 
     qint64 startLine = gStartLine;
     qCDebug(logApp) << "Reading lines from" << startLine << "count:" << SEGEMENT_SIZE;
-    QStringList strList = DLDBusHandler::instance(this)->readLogLinesInRange(GXWM_TREE_DATA, startLine, SEGEMENT_SIZE);
+    QStringList strList = DLDBusHandler::instance()->readLogLinesInRange(GXWM_TREE_DATA, startLine, SEGEMENT_SIZE);
     if (!m_canRun) {
         return;
     }
