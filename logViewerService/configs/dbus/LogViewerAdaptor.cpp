@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -43,11 +43,11 @@ int LogViewerAdaptor::exitCode()
     return out0;
 }
 
-bool LogViewerAdaptor::exportLog(const QString &outDir, const QString &in, bool isFile)
+bool LogViewerAdaptor::exportLog(const QDBusUnixFileDescriptor &fd, const QString &in, bool isFile)
 {
     // handle method call com.deepin.logviewer.exportLog
     bool out0;
-    QMetaObject::invokeMethod(parent(), "exportLog", Q_RETURN_ARG(bool, out0), Q_ARG(QString, outDir), Q_ARG(QString, in), Q_ARG(bool, isFile));
+    QMetaObject::invokeMethod(parent(), "exportLog", Q_RETURN_ARG(bool, out0), Q_ARG(QDBusUnixFileDescriptor, fd), Q_ARG(QString, in), Q_ARG(bool, isFile));
     return out0;
 }
 
@@ -121,11 +121,10 @@ QStringList LogViewerAdaptor::readLogLinesInRange(int fd, qlonglong startLine, q
     return out0;
 }
 
-QStringList LogViewerAdaptor::whiteListOutPaths()
+bool LogViewerAdaptor::exportOpsLog(const QDBusUnixFileDescriptor &fd)
 {
-    // handle method call com.deepin.logviewer.whiteListOutPaths
-    QStringList out0;
-    QMetaObject::invokeMethod(parent(), "whiteListOutPaths", Q_RETURN_ARG(QStringList, out0));
+    // handle method call com.deepin.logviewer.exportOpsLog
+    bool out0;
+    QMetaObject::invokeMethod(parent(), "exportOpsLog", Q_RETURN_ARG(bool, out0), Q_ARG(QDBusUnixFileDescriptor, fd));
     return out0;
 }
-

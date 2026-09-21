@@ -24,6 +24,9 @@
 #include <QtCore/QVariant>
 #include <QtDBus/QtDBus>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 /*
  * Proxy class for interface com.deepin.logviewer
  */
@@ -48,11 +51,26 @@ public Q_SLOTS: // METHODS
         return asyncCallWithArgumentList(QStringLiteral("exitCode"), argumentList);
     }
 
-    inline QDBusPendingReply<bool> exportLog(const QString &outDir, const QString &in, bool isFile)
+    // exportLog: 前端打开目标文件（写方式），将 fd 通过 D-Bus 传给后端。
+    // 后端只需检查 fd 可写并写入内容，无需感知目录路径或白名单。
+    // 后端 ProtectHome=tmpfs 遮蔽后仍能通过 fd 正确写入用户选择的真实文件。
+    inline QDBusPendingReply<bool> exportLog(const QString &outFilePath, const QString &in, bool isFile)
     {
+        const QByteArray filePath = outFilePath.toUtf8();
+        const int fileFd = ::open(filePath.constData(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+        if (fileFd < 0) {
+            qWarning("DeepinLogviewerInterface::exportLog: failed to open target file: %s errno: %d",
+                     filePath.constData(), errno);
+            QDBusPendingReply<bool> emptyReply;
+            return emptyReply;
+        }
+
+        QDBusUnixFileDescriptor dbusFd(fileFd);
         QList<QVariant> argumentList;
-        argumentList << QVariant::fromValue(outDir) << QVariant::fromValue(in) << QVariant::fromValue(isFile);
-        return asyncCallWithArgumentList(QStringLiteral("exportLog"), argumentList);
+        argumentList << QVariant::fromValue(dbusFd) << QVariant::fromValue(in) << QVariant::fromValue(isFile);
+        QDBusPendingReply<bool> reply = asyncCallWithArgumentList(QStringLiteral("exportLog"), argumentList);
+        ::close(fileFd);
+        return reply;
     }
 
     inline QDBusPendingReply<QStringList> getFileInfo(const QString &file, bool unzip)
@@ -145,11 +163,6 @@ public Q_SLOTS: // METHODS
         return asyncCallWithArgumentList(QStringLiteral("executeCmd"), argumentList);
     }
 
-    inline QDBusPendingReply<QStringList> whiteListOutPaths()
-    {
-        QList<QVariant> argumentList;
-        return asyncCallWithArgumentList(QStringLiteral("whiteListOutPaths"), argumentList);
-    }
 
     inline QDBusPendingReply<bool> exportOpsLog(const QDBusUnixFileDescriptor &fd)
     {

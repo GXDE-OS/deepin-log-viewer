@@ -5,8 +5,6 @@
 #ifndef LOGVIEWERSERVICE_H
 #define LOGVIEWERSERVICE_H
 
-#include <dgiomount.h>
-
 #include <QObject>
 #include <QDBusContext>
 #include <QScopedPointer>
@@ -17,7 +15,6 @@
 #include <QSet>
 
 class QTextStream;
-class DGioVolumeManager;
 class LogViewerService : public QObject
     , protected QDBusContext
 {
@@ -37,7 +34,7 @@ public Q_SLOTS:
     Q_SCRIPTABLE void quit();
     Q_SCRIPTABLE QStringList getFileInfo(const QString &file, bool unzip = true);
     Q_SCRIPTABLE QStringList getOtherFileInfo(const QString &file, bool unzip = true);
-    Q_SCRIPTABLE bool exportLog(const QString &outDir, const QString &in, bool isFile);
+    Q_SCRIPTABLE bool exportLog(const QDBusUnixFileDescriptor &fd, const QString &in, bool isFile);
     Q_SCRIPTABLE QString openLogStream(const QString &filePath);
     Q_SCRIPTABLE QString readLogInStream(const QString &token);
     Q_SCRIPTABLE QString isFileExist(const QString &filePath);
@@ -45,17 +42,9 @@ public Q_SLOTS:
     Q_SCRIPTABLE qint64 getLineCount(const QString &filePath);
     // 仅能执行特定合法命令
     Q_SCRIPTABLE QString executeCmd(const QString &cmd);
-    Q_SCRIPTABLE QStringList whiteListOutPaths();
     // 通过前端传入的文件描述符导出运维日志：后端在 /var/log 下创建随机临时目录收集日志，
     // 整体压缩后写入 fd，随后自行清理临时目录，不再向调用方返回路径。
     Q_SCRIPTABLE bool exportOpsLog(const QDBusUnixFileDescriptor &fd);
-
-public:
-    // 获取用户家目录
-    QStringList getHomePaths();
-    // 获取外设挂载路径(包括smb路径)
-    QStringList getExternalDevPaths();
-    QList<QExplicitlySharedDataPointer<DGioMount>> getMounts_safe();
 
 private:
     QString readLog(const QString &filePath);
@@ -76,6 +65,7 @@ private:
     // 基于 fd 的 TOCTOU 安全递归删除目录。
     bool safeRemoveDirRecursive(int parentFd, const char *name);
 
+
 private:
     bool checkAuthorization(const QString &actionId);
 private:
@@ -90,6 +80,9 @@ private:
     bool checkAuth(const QString &actionId);
     QByteArray processCatFile(const QString &filePath);
     void processCmdArgs(const QString &cmdStr, const QStringList &args);
+    // 在后端私有命名空间内完成 coredumpctl dump + readelf -n，截取前 200 行 maps。
+    // 临时 dump 文件由 QTemporaryFile（autoRemove）管理，作用域结束自动清理。
+    QString extractCoredumpMaps(const QString &pid);
 
     // 客户端生命周期跟踪：记录所有通过 D-Bus 连入的调用方唯一总线名，
     // 当最后一个客户端断开后自动退出服务（替代被前端主动调用的 quit）。

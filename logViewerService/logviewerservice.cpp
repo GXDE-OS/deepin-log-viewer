@@ -13,9 +13,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include <dgiofile.h>
-#include <dgiovolume.h>
-#include <dgiovolumemanager.h>
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <polkit-qt5-1/PolkitQt1/Authority>
 #else
@@ -209,14 +206,14 @@ QString LogViewerService::readLog(const QString &filePath)
         return " ";
     }
 
-    //增加服务黑名单，只允许通过提权接口读取/var/log下，家目录下和临时目录下的文件
-    //部分设备是直接从root账户进入，因此还需要监控/root目录
-    if ((!filePath.startsWith("/var/log/") &&
-         !filePath.startsWith("/tmp") &&
-         !filePath.startsWith("/home") &&
-         !filePath.startsWith("/root")) ||
-         filePath.contains(".."))  {
+    // ProtectHome=tmpfs 遮蔽后，后端仅允许读取 /var/log/ 和 /tmp 下的系统日志文件；
+    // /home、/root 下的用户日志由前端用户日志访问类在用户进程内本地读取，不再经此后端接口。
+    if (!filePath.startsWith("/var/log/") && !filePath.startsWith("/tmp")) {
         qCWarning(logService) << "File path not in whitelist:" << filePath;
+        return " ";
+    }
+    if (filePath.contains("..")) {
+        qCWarning(logService) << "File path contains '..':" << filePath;
         return " ";
     }
 
@@ -503,14 +500,14 @@ QStringList LogViewerService::readLogLinesInRange(const QString &filePath, qint6
     if (!checkAuth(s_Action_View))
         return lines;
 
-    //增加服务黑名单，只允许通过提权接口读取/var/log下，家目录下和临时目录下的文件
-    //部分设备是直接从root账户进入，因此还需要监控/root目录
-    if ((!filePath.startsWith("/var/log/") &&
-         !filePath.startsWith("/tmp") &&
-         !filePath.startsWith("/home") &&
-         !filePath.startsWith("/root")) ||
-         filePath.contains("..")) {
+    // ProtectHome=tmpfs 遮蔽后，后端仅允许读取 /var/log/ 和 /tmp 下的系统日志文件；
+    // /home、/root 下的用户日志由前端用户日志访问类在用户进程内本地读取，不再经此后端接口。
+    if (!filePath.startsWith("/var/log/") && !filePath.startsWith("/tmp")) {
         qCDebug(logService) << "File path not in whitelist for readLogLinesInRange:" << filePath;
+        return lines;
+    }
+    if (filePath.contains("..")) {
+        qCDebug(logService) << "File path contains '..':" << filePath;
         return lines;
     }
 
@@ -622,14 +619,13 @@ qint64 LogViewerService::getLineCount(const QString &filePath)
         return -1;
     }
 
-    //增加服务黑名单，只允许通过提权接口读取/var/log下，家目录下和临时目录下的文件
-    //部分设备是直接从root账户进入，因此还需要监控/root目录
-    if ((!filePath.startsWith("/var/log/") &&
-         !filePath.startsWith("/tmp") &&
-         !filePath.startsWith("/home") &&
-         !filePath.startsWith("/root")) ||
-            filePath.contains("..")) {
+    // ProtectHome=tmpfs 遮蔽后，后端仅允许读取 /var/log/ 和 /tmp 下的系统日志文件。
+    if (!filePath.startsWith("/var/log/") && !filePath.startsWith("/tmp")) {
         qCWarning(logService) << "File path not in whitelist for getLineCount:" << filePath;
+        return -1;
+    }
+    if (filePath.contains("..")) {
+        qCWarning(logService) << "File path contains '..':" << filePath;
         return -1;
     }
 
@@ -678,14 +674,17 @@ QString LogViewerService::executeCmd(const QString &cmd)
         // 通过后端服务，按进程号获取崩溃信息
         cmdStr = "coredumpctl";
         args = cmd.mid(QString("coredumpctl").size() + 1).split(' ');
-    } else if (cmd.startsWith("coredumpctl dump")) {
-        // 截取对应pid的dump文件到指定目录
-        cmdStr = "coredumpctl";
-        args = cmd.mid(QString("coredumpctl").size() + 1).split(' ');
-    } else if (cmd.startsWith("readelf")) {
-        // 获取dump文件偏移地址信息
-        cmdStr = "readelf";
-        args = cmd.mid(QString("readelf").size() + 1).split(' ');
+    } else if (cmd.startsWith("read-coredump-maps")) {
+        // 合并原 dump+readelf 两步：在后端私有命名空间内完成 coredumpctl dump →
+        // readelf -n → 自动清理，路径不再经 D-Bus 传递，PrivateTmp 下依然有效。
+        const QString pid = cmd.mid(QString("read-coredump-maps").size()).trimmed();
+        bool pidOk = false;
+        pid.toInt(&pidOk);
+        if (!pidOk || pid.isEmpty()) {
+            qCWarning(logService) << "read-coredump-maps: invalid pid:" << pid;
+            return result;
+        }
+        return extractCoredumpMaps(pid);
     }
 
     if (!cmdStr.isEmpty()) {
@@ -707,27 +706,63 @@ QString LogViewerService::executeCmd(const QString &cmd)
             else
                 nCnt = 0;
             result = QString::number(nCnt);
-        } else if (cmd.startsWith("readelf")) {
-            // 因原始maps信息过大，基本几百KB，埋点平台并不需要全量数据，仅取前200行maps信息即可
-            QTextStream in(m_process.readAllStandardOutput());
-            QStringList lines;
-            QString str;
-            while (!in.atEnd()) {
-                str  = in.readLine();
-
-                if (!str.isEmpty())
-                    lines.push_back(str);
-                if (lines.count() >= COREDUMP_MAPS_MAX_LINES)
-                    break;
-            }
-
-            result = lines.join('\n').toUtf8();
         } else {
             result = m_process.readAllStandardOutput();
         }
     }
 
     return result;
+}
+
+/*!
+ * \~chinese \brief LogViewerService::extractCoredumpMaps 在后端私有命名空间内完成
+ *            coredumpctl dump + readelf -n 并截取前 COREDUMP_MAPS_MAX_LINES 行 maps 信息。
+ * \~chinese \param pid 崩溃进程号
+ * \~chinese \return maps 文本（前 200 行），失败返回空串
+ * \note 临时 dump 文件落在后端私有 /tmp（QTemporaryFile，autoRemove），作用域结束自动清理。
+ *       原实现由前端拼 /tmp 路径经 D-Bus 传后端，PrivateTmp 下后端不可达该路径；
+ *       现改为后端自建临时文件闭环处理，路径不跨进程传递。
+ */
+QString LogViewerService::extractCoredumpMaps(const QString &pid)
+{
+    // 仅需单个临时文件，无需目录：open() 以 O_EXCL 独占创建，fileName() 即路径。
+    // open 后立即 close，让 coredumpctl dump -o 以 O_TRUNC 覆写该文件。
+    QTemporaryFile tmpFile(QDir::tempPath() + "/deepin-log-viewer-core-XXXXXX.dump");
+    if (!tmpFile.open()) {
+        qCWarning(logService) << "extractCoredumpMaps: failed to create temp file:" << tmpFile.errorString();
+        return QString();
+    }
+    const QString corePath = tmpFile.fileName();
+    tmpFile.close();
+
+    // coredumpctl dump: 导出 core dump 到后端私有 /tmp 下的临时文件
+    m_process.start("coredumpctl", QStringList() << "dump" << pid << "-o" << corePath);
+    if (!m_process.waitForFinished(-1) || m_process.exitCode() != 0) {
+        qCWarning(logService) << "extractCoredumpMaps: coredumpctl dump failed for pid:" << pid
+                              << "exitCode:" << m_process.exitCode()
+                              << "stderr:" << m_process.readAllStandardError();
+        return QString();
+    }
+
+    // readelf -n: 读取 ELF notes（含 maps 信息）
+    m_process.start("readelf", QStringList() << "-n" << corePath);
+    if (!m_process.waitForFinished(-1)) {
+        qCWarning(logService) << "extractCoredumpMaps: readelf failed for:" << corePath;
+        return QString();
+    }
+
+    // 因原始 maps 信息过大，仅取前 COREDUMP_MAPS_MAX_LINES 行
+    QTextStream in(m_process.readAllStandardOutput());
+    QStringList lines;
+    while (!in.atEnd()) {
+        const QString str = in.readLine();
+        if (!str.isEmpty())
+            lines.push_back(str);
+        if (lines.count() >= COREDUMP_MAPS_MAX_LINES)
+            break;
+    }
+
+    return lines.join('\n');
 }
 
 /*!
@@ -837,93 +872,6 @@ quint64 LogViewerService::getFileSize(const QString &filePath)
     return 0;
 }
 
-// 获取白名单导出路径
-QStringList LogViewerService::whiteListOutPaths()
-{
-    trackCurrentCaller();
-    qCDebug(logService) << "Getting white list out paths";
-    if (!checkAuth(s_Action_View)) {
-        return {};
-    }
-    QStringList paths;
-    // 获取用户家目录
-    QStringList homeList = getHomePaths();
-    if (!homeList.isEmpty())
-        paths << homeList;
-    // 获取外设挂载可写路径(包括smb路径)
-    paths << getExternalDevPaths();
-    // 获取临时目录
-    paths.push_back("/tmp");
-    return paths;
-}
-
-// 获取用户家目录
-QStringList LogViewerService::getHomePaths()
-{
-    qCDebug(logService) << "Getting home paths";
-    QStringList homeList;
-
-    if (!calledFromDBus()) {
-        return homeList;
-    }
-
-    QFileInfoList infoList = QDir("/home").entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (auto info : infoList) {
-        if (info.isDir())
-            homeList.push_back(info.absoluteFilePath());
-    }
-
-    return homeList;
-}
-
-// 获取外设挂载路径
-QStringList LogViewerService::getExternalDevPaths()
-{
-    qCDebug(logService) << "Getting external dev paths";
-    QStringList devPaths;
-    const QList<QExplicitlySharedDataPointer<DGioMount> > mounts = getMounts_safe();
-    for (auto mount : mounts) {
-        QString uri = mount->getRootFile()->uri();
-        QString scheme = QUrl(uri).scheme();
-
-        // sbm路径判断，分为gvfs挂载和cifs挂载两种
-        QRegularExpression recifs("^file:///media/(.*)/smbmounts");
-        QRegularExpression regvfs("^file:///run/user/(.*)/gvfs|^/root/.gvfs");
-        if (recifs.match(uri).hasMatch() || regvfs.match(uri).hasMatch()) {
-            QString path = QUrl(uri).toLocalFile();
-            QFlags <QFileDevice::Permission> power = QFile::permissions(path);
-            if (power.testFlag(QFile::WriteUser))
-                devPaths.push_back(path);
-        }
-
-        // 外设路径判断
-        if ((scheme == "file") ||  //usb device
-                (scheme == "gphoto2") ||        //phone photo
-                (scheme == "mtp")) {            //android file
-            QExplicitlySharedDataPointer<DGioFile> locationFile = mount->getDefaultLocationFile();
-            QString path = locationFile->path();
-            if (path.startsWith("/media/")) {
-                QFlags <QFileDevice::Permission> power = QFile::permissions(path);
-                if (power.testFlag(QFile::WriteUser)) {
-                    devPaths.push_back(path);
-                }
-            }
-        }
-    }
-
-    return devPaths;
-}
-
-//可重入版本的getMounts
-QList<QExplicitlySharedDataPointer<DGioMount> > LogViewerService::getMounts_safe()
-{
-    qCDebug(logService) << "Getting mounts safely";
-    static QMutex mutex;
-    mutex.lock();
-    auto result = DGioVolumeManager::getMounts();
-    mutex.unlock();
-    return result;
-}
 
 void LogViewerService::clearTempFiles()
 {
@@ -1177,188 +1125,162 @@ QStringList LogViewerService::getOtherFileInfo(const QString &file, bool unzip)
     return fileNamePath;
 }
 
-static bool processExportLog(const QString &cmdStr, const QString &outFullPath,const QStringList &args)
-{
-    qCDebug(logService) << "Processing export log for:" << cmdStr << "and outFullPath:" << outFullPath << "and args:" << args;
-    QProcess process;
-    if (cmdStr != "cp") {
-        process.setStandardOutputFile(outFullPath, QIODevice::WriteOnly);
-    }
 
+// 通过 QProcess 运行命令，将标准输出重定向到父进程持有的 fd。
+// 子进程无法直接继承父进程的 fd（Qt 的 closeOpenFiles 会关闭继承的 fd，
+// 且 O_CLOEXEC 也不跨 exec），故通过 /proc/<pid>/fd/<N> magic symlink
+// 让子进程重新 open 同一文件描述符指向的文件。
+// 依赖：父子进程同 uid（ptrace 访问检查要求），服务以 root 运行满足。
+static bool runCommandRedirectToFd(const QString &cmdStr, const QStringList &args, int outFd)
+{
+    const QString outFullPath = QStringLiteral("/proc/%1/fd/%2")
+                                    .arg(QCoreApplication::applicationPid())
+                                    .arg(outFd);
+    QProcess process;
+    process.setStandardOutputFile(outFullPath, QIODevice::WriteOnly);
     process.start(cmdStr, args);
     if (!process.waitForFinished(-1)) {
-        qCDebug(logService) << "Failed to wait for process to finish";
+        qCWarning(logService) << "command timed out or failed:" << cmdStr << args;
+        process.kill();
+        return false;
+    }
+    if (process.exitCode() != 0) {
+        qCWarning(logService) << "command exited with code:" << process.exitCode()
+                              << "cmd:" << cmdStr << args;
         return false;
     }
     return true;
 }
 
-bool LogViewerService::exportLog(const QString &outDir, const QString &in, bool isFile)
+bool LogViewerService::exportLog(const QDBusUnixFileDescriptor &fd, const QString &in, bool isFile)
 {
     trackCurrentCaller();
-    qCDebug(logService) << "Exporting log to:" << outDir << "with input:" << in << "and isFile:" << isFile;
-    if(!checkAuth(s_Action_View)) { //非法调用
+    qCDebug(logService) << "Exporting log with target fd, input:" << in << "isFile:" << isFile;
+    if (!checkAuth(s_Action_View)) {
         qCDebug(logService) << "Invalid authorization for export log";
         return false;
     }
 
-    QFileInfo outDirInfo;
-    if(!outDir.endsWith("/")) {
-        outDirInfo.setFile(outDir + "/");
-    } else {
-        outDirInfo.setFile(outDir);
-    }
-
-    if (!outDirInfo.isDir() || in.isEmpty()) {
-        qCDebug(logService) << "Invalid output directory or input";
+    // 目标文件 fd 由前端打开（用户自己可写的文件），后端只需检查可写即可。
+    // fd 即精确授权：前端打开的文件必然是用户有权限写入的，无需白名单或路径校验。
+    const int outFd = fd.fileDescriptor();
+    if (outFd <= 0) {
+        qCWarning(logService) << "exportLog: invalid target fd";
         return false;
     }
 
-    // 导出路径白名单检查
-    QString outPath = outDirInfo.absoluteFilePath();
-    QStringList availablePaths = whiteListOutPaths();
-    bool bAvailable = false;
-    for (auto path : availablePaths) {
-        if (outPath.startsWith(path)) {
-            bAvailable = true;
-            break;
-        }
-    }
-    if (!bAvailable) {
-        qCDebug(logService) << "Output path not in whitelist";
+    // 必须是普通文件，防止写入设备/套接字等特殊 fd
+    struct stat fdSt;
+    if (fstat(outFd, &fdSt) != 0 || !S_ISREG(fdSt.st_mode)) {
+        qCWarning(logService) << "exportLog: target fd is not a regular file";
         return false;
     }
 
-    QString outFullPath = "";
+    if (in.isEmpty()) {
+        qCWarning(logService) << "exportLog: empty input";
+        return false;
+    }
+
+    // 命令白名单分支（非文件模式）
+    QString cmdStr;
+    QStringList args;
+
     if (isFile) {
-        //增加服务黑名单，只允许通过提权接口读取/var/log、/var/lib/systemd/coredump下，家目录下和临时目录下的文件
-        if ((!in.startsWith("/var/log/") && !in.startsWith("/tmp") && !in.startsWith("/home") && !in.startsWith("/var/lib/systemd/coredump"))
+        // 输入路径白名单：仅允许 /var/log/、/tmp、/var/lib/systemd/coredump
+        // /home 下的应用日志由前端用户日志访问类本地导出，不再经此后端接口。
+        if ((!in.startsWith("/var/log/") && !in.startsWith("/tmp") && !in.startsWith("/var/lib/systemd/coredump"))
                 || in.contains("..")) {
-            qCDebug(logService) << "Input path not in allowed paths";
+            qCWarning(logService) << "Input path not in allowed paths:" << in;
             return false;
         }
         QFileInfo filein(in);
         if (!filein.isFile()) {
             qCWarning(logService) << "in not file:" << in;
-            qCDebug(logService) << "Input is not a file";
-            return false;
-        }
-
-        outFullPath = outDirInfo.absoluteFilePath() + filein.fileName();
-        
-        // 使用更高效的文件复制方法替代cp命令
-        QFile sourceFile(in);
-        QFile targetFile(outFullPath);
-        
-        // 使用块复制提高大文件复制效率
-        if (sourceFile.open(QIODevice::ReadOnly) && targetFile.open(QIODevice::WriteOnly)) {
-            const qint64 chunkSize = 1024 * 1024; // 1MB chunks
-            QScopedPointer<char> buffer(new char[chunkSize]);
-            
-            while (!sourceFile.atEnd()) {
-                qint64 bytesRead = sourceFile.read(buffer.data(), chunkSize);
-                if (bytesRead > 0) {
-                    if (targetFile.write(buffer.data(), bytesRead) != bytesRead) {
-                        qCWarning(logService) << "Failed to write all bytes to target file:" << outFullPath;
-                        sourceFile.close();
-                        targetFile.close();
-                        return false;
-                    }
-                } else if (bytesRead < 0) {
-                    qCWarning(logService) << "Error reading from source file:" << in;
-                    sourceFile.close();
-                    targetFile.close();
-                    return false;
-                }
-            }
-            
-            sourceFile.close();
-            targetFile.close();
-            
-            // 设置文件权限
-            QFile::setPermissions(outFullPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner | 
-                                             QFileDevice::ReadGroup | QFileDevice::WriteGroup |
-                                             QFileDevice::ReadOther | QFileDevice::WriteOther);
-            
-            return true;
-        } else {
-            qCWarning(logService) << "Failed to open source or target file. Source:" << in << "Target:" << outFullPath;
             return false;
         }
     } else {
-        QString cmdStr;
-        QStringList args;
-        QString submoduleName;
-
-        // 判断输入是否为json字串
+        // JSON 分支：解析 submoduleName 构造 journalctl 命令
         QJsonParseError parseError;
         QJsonDocument document = QJsonDocument::fromJson(in.toUtf8(), &parseError);
-        if (parseError.error == QJsonParseError::NoError) {
-            if (document.isObject()) {
-                QJsonObject object = document.object();
+        if (parseError.error == QJsonParseError::NoError && document.isObject()) {
+            QJsonObject object = document.object();
+            QString submoduleName;
+            if (object.contains("name"))
+                submoduleName = object.value("name").toString();
 
-                if (object.contains("name"))
-                    submoduleName = object.value("name").toString();
+            QString filter;
+            QString execPath;
+            if (object.contains("filter"))
+                filter = object.value("filter").toString();
+            if (object.contains("execPath"))
+                execPath = object.value("execPath").toString();
 
-                QString filter;
-                QString execPath;
-                if (object.contains("filter"))
-                    filter = object.value("filter").toString();
-                if (object.contains("execPath"))
-                    execPath = object.value("execPath").toString();
-
-                cmdStr = "journalctl";
-                // 每个匹配条件作为独立参数，不会被shell解释
-                if (!execPath.isEmpty()) {
-                    args << QString("_EXE=%1").arg(execPath);
-                }
-                if (!filter.isEmpty()) {
-                    args << QString("CODE_CATEGORY=%1").arg(filter);
-                }
-                if (execPath.isEmpty() && filter.isEmpty()) {
-                    args << QString("SYSLOG_IDENTIFIER=%1").arg(submoduleName);
-                }
-                args << "-r";
-
-                outFullPath = outDirInfo.absoluteFilePath() + submoduleName + ".log";
-            }
+            cmdStr = "journalctl";
+            if (!execPath.isEmpty())
+                args << QString("_EXE=%1").arg(execPath);
+            if (!filter.isEmpty())
+                args << QString("CODE_CATEGORY=%1").arg(filter);
+            if (execPath.isEmpty() && filter.isEmpty())
+                args << QString("SYSLOG_IDENTIFIER=%1").arg(submoduleName);
+            args << "-r";
         }
 
-        // 判断输入是否为cmd命令（来自硬编码白名单，无注入风险）
+        // 硬编码白名单命令分支
         if (cmdStr.isEmpty()) {
             auto it = m_commands.find(in);
             if (it != m_commands.end()) {
                 args = it.value();
                 cmdStr = args.takeFirst();
-                outFullPath = outDirInfo.absoluteFilePath() + in + ".log";
             }
         }
 
-        // 未解析出有效命令，返回
         if (cmdStr.isEmpty()) {
             qCWarning(logService) << "unknown command:" << in;
             return false;
         }
-
-        if (!QFile::exists(outFullPath)) {
-            qCInfo(logService) << "outFullPath:" << outFullPath << "not exist;";
-            QFile file(outFullPath);
-        }
-
-        if (!processExportLog(cmdStr, outFullPath, args)) {
-            qCWarning(logService) << "command error:" << cmdStr << args;
-            return false;
-        }
     }
 
-    //设置文件权限
-    QProcess newProcess;
-    newProcess.start("chmod", QStringList() << "777" << outFullPath);
-    if (!newProcess.waitForFinished()) {
-        qCWarning(logService) << QString("chmod 777 %1 failed.").arg(outFullPath);
-        return false;
+    bool ret = false;
+    if (isFile) {
+        // 块复制源文件到目标 fd
+        QFile sourceFile(in);
+        if (!sourceFile.open(QIODevice::ReadOnly)) {
+            qCWarning(logService) << "Failed to open source file:" << in;
+        } else {
+            QFile targetFile;
+            if (!targetFile.open(outFd, QIODevice::WriteOnly)) {
+                qCWarning(logService) << "Failed to open target fd for writing";
+                sourceFile.close();
+            } else {
+                const qint64 chunkSize = 1024 * 1024;  // 1MB
+                QScopedPointer<char> buffer(new char[chunkSize]);
+                bool error = false;
+                while (!sourceFile.atEnd()) {
+                    qint64 bytesRead = sourceFile.read(buffer.data(), chunkSize);
+                    if (bytesRead > 0) {
+                        if (targetFile.write(buffer.data(), bytesRead) != bytesRead) {
+                            qCWarning(logService) << "Failed to write all bytes to target";
+                            error = true;
+                            break;
+                        }
+                    } else if (bytesRead < 0) {
+                        qCWarning(logService) << "Error reading from source:" << in;
+                        error = true;
+                        break;
+                    }
+                }
+                targetFile.flush();
+                sourceFile.close();
+                ret = !error;
+            }
+        }
+    } else {
+        // 命令输出重定向到目标 fd（通过 /proc/<pid>/fd/N magic symlink）
+        ret = runCommandRedirectToFd(cmdStr, args, outFd);
     }
-    return true;
+
+    // 不对前端打开的 fd 做 fchmod（权限由前端文件决定），也不 close（fd 由调用者管理）。
+    return ret;
 }
 
 void LogViewerService::trackCurrentCaller()

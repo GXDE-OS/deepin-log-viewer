@@ -818,8 +818,14 @@ GXWM Log</translation>
         <translation>Log Lain</translation>
     </message>
     <message>
-        <location filename="../application/loglistview.cpp" line="372" />
-        <location filename="../application/loglistview.cpp" line="376" />
+        <location filename="../application/loglistview.cpp" line="311"/>
+        <location filename="../application/loglistview.cpp" line="313"/>
+        <source>Auth Log</source>
+        <translation>Log Auth</translation>
+    </message>
+    <message>
+        <location filename="../application/loglistview.cpp" line="360"/>
+        <location filename="../application/loglistview.cpp" line="364"/>
         <source>Custom Log</source>
         <translation>Log Suai</translation>
     </message>
@@ -867,7 +873,7 @@ GXWM Log</translation>
     <message>
         <location filename="../application/displaycontent.cpp" line="3642" />
         <source>Auth log is not exist.</source>
-        <translation>Log pengekalan tidak wujud.</translation>
+        <translation>Log Auth tidak wujud.</translation>
     </message>
 </context>
 <context>

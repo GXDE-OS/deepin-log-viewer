@@ -25,8 +25,6 @@
 #include <QStandardPaths>
 #include <QThreadPool>
 #include <QLoggingCategory>
-#include <QCoreApplication>
-#include <QTemporaryDir>
 
 Q_DECLARE_LOGGING_CATEGORY(logApp)
 
@@ -2745,6 +2743,10 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 PERF_PRINT_BEGIN("POINT-04", QString("format=txt count=%1").arg(aList.count()));
                 exportThread->exportToHtmlPublic(filePath, aList, labels);
                 break;
+            case Auth:
+                PERF_PRINT_BEGIN("POINT-04", QString("format=html count=%1").arg(authList.count()));
+                exportThread->exportToHtmlPublic(filePath, authList, labels);
+                break;
             default:
                 break;
             }
@@ -2799,6 +2801,10 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
                 PERF_PRINT_BEGIN("POINT-04", QString("format=txt count=%1").arg(aList.count()));
                 exportThread->exportToDocPublic(filePath, aList, labels);
                 break;
+            case Auth:
+                PERF_PRINT_BEGIN("POINT-04", QString("format=doc count=%1").arg(authList.count()));
+                exportThread->exportToDocPublic(filePath, authList, labels);
+                break;
             default:
                 break;
             }
@@ -2852,6 +2858,10 @@ void LogBackend::exportLogData(const QString &filePath, const QStringList &strLa
             case Audit:
                 PERF_PRINT_BEGIN("POINT-04", QString("format=txt count=%1").arg(aList.count()));
                 exportThread->exportToXlsPublic(filePath, aList, labels);
+                break;
+            case Auth:
+                PERF_PRINT_BEGIN("POINT-04", QString("format=xls count=%1").arg(authList.count()));
+                exportThread->exportToXlsPublic(filePath, authList, labels);
                 break;
             default:
                 break;
@@ -3356,16 +3366,10 @@ void LogBackend::parseCoredumpDetailInfo(QList<LOG_MSG_COREDUMP> &list)
         if (data.coreFile != "missing") {
             QString outInfoByte;
 
-            // get maps info
-            QTemporaryDir tempDir;
-            if (tempDir.isValid()) {
-                const QString &corePath = tempDir.path() + QString("/%1.dump").arg(QFileInfo(data.storagePath).fileName());
-                DLDBusHandler::instance()->executeCmd(QString("coredumpctl dump %1 -o %2").arg(data.pid).arg(corePath));
-                outInfoByte = DLDBusHandler::instance()->executeCmd(QString("readelf -n %1").arg(corePath));
-                data.maps = outInfoByte;
-            } else {
-                qCWarning(logApp) << "Unable to create temporary directory: " << tempDir.errorString();
-            }
+            // 由后端在其私有命名空间内完成 coredumpctl dump + readelf -n 并截取 maps，
+            // 前端不再拼 /tmp 路径（PrivateTmp 下前端路径对后端不可达）。
+            data.maps = DLDBusHandler::instance()
+                            ->executeCmd(QString("read-coredump-maps %1").arg(data.pid));
 
             // 获取二进制文件信息
             outInfoByte = Utils::executeCmd("file", QStringList() << data.exe);
