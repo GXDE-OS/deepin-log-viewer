@@ -19,7 +19,7 @@ Copyright: UnionTech Software Technology Co., Ltd.
 License: CC0-1.0
 
 # debian
-Files: debian/*
+Files: debian/* arch/*
 Copyright: UnionTech Software Technology Co., Ltd.
 License: CC0-1.0
 

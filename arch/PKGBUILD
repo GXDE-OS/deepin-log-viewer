@@ -1,0 +1,70 @@
+# Maintainer: CharOfString <root@charofstring.cc>
+pkgbase=deepin-log-viewer-git
+pkgname=('deepin-log-viewer-git' 'liblogviewerplugin-git')
+pkgver=6.5.42
+pkgrel=1
+pkgdesc='Log viewer for GXDE'
+arch=('x86_64' 'aarch64')
+url="https://github.com/GXDE-OS/deepin-log-viewer"
+license=('GPL-3.0-or-later')
+makedepends=('git' 'cmake' 'ninja' 'pkgconf' 'qt6-base' 'qt6-5compat' 'qt6-svg' 'qt6-tools' 'dtk6core-git'
+             'dtk6gui-git' 'dtk6widget-git' 'kcodecs' 'polkit-qt6' 'gio-qt' 'systemd' 'icu' 'xerces-c'
+             'boost' 'rapidjson' 'minizip' 'zlib' 'libzip')
+source=()
+sha512sums=()
+
+# 直接使用 PKGBUILD 所在的 git 仓库作为源码 ・ Build from the git checkout this PKGBUILD lives in.
+_srcroot() {
+  git -C "$startdir" rev-parse --show-toplevel
+}
+
+build() {
+  # 与 debian/rules 相同 ・ Same as debian/rules.
+  cmake -B build -S "$(_srcroot)" -GNinja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_SAFETYTEST_ARG=CMAKE_SAFETYTEST_ARG_OFF \
+    -DAPP_VERSION="$pkgver" \
+    -DVERSION="$pkgver" \
+    -DLIB_INSTALL_DIR=/usr/lib
+  ninja -C build
+  DESTDIR="$srcdir/root" ninja -C build install
+}
+
+# 按 debian/*.install 拆分 ・ Split as in debian/*.install.
+_pick() {
+  local _f
+  cd "$srcdir/root"
+  for _f in "$@"; do
+    [[ -e $_f || -L $_f ]] || { echo "missing: $_f" >&2; return 1; }
+    install -d "$pkgdir/$(dirname "$_f")"
+    mv "$_f" "$pkgdir/$_f"
+  done
+}
+
+package_deepin-log-viewer-git() {
+  depends=('dtk6core-git' 'dtk6gui-git' 'dtk6widget-git' 'qt6-base' 'qt6-svg' 'polkit-qt6' 'gio-qt'
+           'systemd-libs' 'icu' 'xerces-c' 'zlib' 'hicolor-icon-theme' 'libgcc' 'libstdc++' 'glibc')
+  provides=('deepin-log-viewer')
+  conflicts=('deepin-log-viewer' 'gxde-log-viewer-git')
+
+  # 其余文件都属于主程序包 ・ Everything that is left belongs to the application.
+  _pick usr/bin usr/lib/deepin-daemon usr/lib/systemd usr/share
+  # 与 debian/manpages 相同 ・ Same as debian/manpages.
+  local _m
+  for _m in deepin-log-viewer logViewerTruncate logViewerAuth; do
+    install -Dm644 "$(_srcroot)/debian/$_m.1" "$pkgdir/usr/share/man/man1/$_m.1"
+  done
+}
+
+package_liblogviewerplugin-git() {
+  pkgdesc='Plugin library of the GXDE log viewer'
+  # Debian 把开发文件拆到 -dev 包，这里按 Arch 惯例合并 ・ Debian splits the development files into -dev; merged here as usual on Arch.
+  depends=('dtk6core-git' 'dtk6gui-git' 'dtk6widget-git' 'gio-qt' 'qt6-base' 'systemd-libs' 'libgcc'
+           'libstdc++' 'glibc')
+  provides=('liblogviewerplugin')
+  conflicts=('liblogviewerplugin')
+
+  cd "$srcdir/root"
+  _pick usr/lib/liblogviewerplugin.so* usr/lib/pkgconfig/liblogviewerplugin.pc usr/include/liblogviewerplugin
+}
