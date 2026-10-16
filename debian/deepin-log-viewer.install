@@ -18,4 +18,3 @@ usr/share/deepin-log-viewer/deepin-log.conf.d/*.json
 usr/share/deepin-debug-config/deepin-debug-config.d/*.json
 usr/share/polkit-1/actions/*.policy
 usr/share/icons/hicolor/scalable/apps/*.svg
-usr/share/deepin-manual
