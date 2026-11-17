@@ -1,14 +1,14 @@
 # Maintainer: CharOfString <root@charofstring.cc>
-pkgbase=deepin-log-viewer-git
-pkgname=('deepin-log-viewer-git' 'liblogviewerplugin-git')
+pkgbase=gxde-deepin-log-viewer
+pkgname=('gxde-deepin-log-viewer' 'liblogviewerplugin')
 pkgver=6.5.43
 pkgrel=1
 pkgdesc='Log viewer for GXDE'
 arch=('x86_64' 'aarch64')
 url="https://github.com/GXDE-OS/deepin-log-viewer"
 license=('GPL-3.0-or-later')
-makedepends=('git' 'cmake' 'ninja' 'pkgconf' 'qt6-base' 'qt6-5compat' 'qt6-svg' 'qt6-tools' 'dtk6core-git'
-             'dtk6gui-git' 'dtk6widget-git' 'kcodecs' 'polkit-qt6' 'gio-qt' 'systemd' 'icu' 'xerces-c'
+makedepends=('git' 'cmake' 'ninja' 'pkgconf' 'qt6-base' 'qt6-5compat' 'qt6-svg' 'qt6-tools' 'gxde-dtk6core'
+             'gxde-dtk6gui' 'gxde-dtk6widget' 'kcodecs' 'polkit-qt6' 'gio-qt' 'systemd' 'icu' 'xerces-c'
              'boost' 'rapidjson' 'minizip' 'zlib' 'libzip')
 source=()
 sha512sums=()
@@ -42,11 +42,12 @@ _pick() {
   done
 }
 
-package_deepin-log-viewer-git() {
-  depends=('dtk6core-git' 'dtk6gui-git' 'dtk6widget-git' 'qt6-base' 'qt6-svg' 'polkit-qt6' 'gio-qt'
+package_gxde-deepin-log-viewer() {
+  depends=('gxde-dtk6core' 'gxde-dtk6gui' 'gxde-dtk6widget' 'qt6-base' 'qt6-svg' 'polkit-qt6' 'gio-qt'
            'systemd-libs' 'icu' 'xerces-c' 'zlib' 'hicolor-icon-theme' 'libgcc' 'libstdc++' 'glibc')
-  provides=('deepin-log-viewer')
-  conflicts=('deepin-log-viewer' 'gxde-log-viewer-git')
+  provides=('deepin-log-viewer' "deepin-log-viewer-git=$pkgver")
+  conflicts=('deepin-log-viewer' 'gxde-log-viewer-git' 'deepin-log-viewer-git')
+  replaces=('deepin-log-viewer-git')
 
   # 其余文件都属于主程序包 ・ Everything that is left belongs to the application.
   _pick usr/bin usr/lib/deepin-daemon usr/lib/systemd usr/share
@@ -57,13 +58,14 @@ package_deepin-log-viewer-git() {
   done
 }
 
-package_liblogviewerplugin-git() {
+package_liblogviewerplugin() {
   pkgdesc='Plugin library of the GXDE log viewer'
   # Debian 把开发文件拆到 -dev 包，这里按 Arch 惯例合并 ・ Debian splits the development files into -dev; merged here as usual on Arch.
-  depends=('dtk6core-git' 'dtk6gui-git' 'dtk6widget-git' 'gio-qt' 'qt6-base' 'systemd-libs' 'libgcc'
+  depends=('gxde-dtk6core' 'gxde-dtk6gui' 'gxde-dtk6widget' 'gio-qt' 'qt6-base' 'systemd-libs' 'libgcc'
            'libstdc++' 'glibc')
-  provides=('liblogviewerplugin')
-  conflicts=('liblogviewerplugin')
+  provides=("liblogviewerplugin-git=$pkgver")
+  conflicts=('liblogviewerplugin-git')
+  replaces=('liblogviewerplugin-git')
 
   cd "$srcdir/root"
   _pick usr/lib/liblogviewerplugin.so* usr/lib/pkgconfig/liblogviewerplugin.pc usr/include/liblogviewerplugin
