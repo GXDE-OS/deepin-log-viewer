@@ -818,8 +818,14 @@ GXWM Log</translation>
         <translation>Outro registo</translation>
     </message>
     <message>
-        <location filename="../application/loglistview.cpp" line="372" />
-        <location filename="../application/loglistview.cpp" line="376" />
+        <location filename="../application/loglistview.cpp" line="311"/>
+        <location filename="../application/loglistview.cpp" line="313"/>
+        <source>Auth Log</source>
+        <translation>Histórico de Autenticação</translation>
+    </message>
+    <message>
+        <location filename="../application/loglistview.cpp" line="360"/>
+        <location filename="../application/loglistview.cpp" line="364"/>
         <source>Custom Log</source>
         <translation>Ficheiro personalizado</translation>
     </message>
@@ -867,7 +873,7 @@ GXWM Log</translation>
     <message>
         <location filename="../application/displaycontent.cpp" line="3642" />
         <source>Auth log is not exist.</source>
-        <translation>Log de autenticação não existe.</translation>
+        <translation>O histórico de autenticação não existe</translation>
     </message>
 </context>
 <context>

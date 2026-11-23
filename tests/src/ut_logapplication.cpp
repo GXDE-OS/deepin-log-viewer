@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2019 - 2022 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2019-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -21,7 +21,8 @@ TEST(LogApplication_Constructor_UT, LogApplication_Constructor_UT)
     char **argv;
     LogApplication *p = new LogApplication(argc, argv);
     EXPECT_NE(p, nullptr);
-    p->deleteLater();
+    // QApplication 常驻不复位：deleteLater 被后续用例泵事件处理掉后，
+    // 其他建 QWidget 的用例会 qFatal，故有意保留实例（测试进程生命周期内泄漏）
 }
 void stub_beginPointLinux(const QString &point, const QString &status)
 {
@@ -47,7 +48,8 @@ TEST(LogApplication_setMainWindow_UT, LogApplication_setMainWindow_UT)
     LogCollectorMain *m = new LogCollectorMain(nullptr);
     p->setMainWindow(m);
     EXPECT_EQ(m, p->m_mainWindow);
-    p->deleteLater();
+    // 主窗口同步删除（异步刷新链挂在其子对象上）；QApplication 常驻不删除
+    delete m;
 }
 
 class LogApplication_notify_UT_Param
@@ -97,22 +99,34 @@ TEST_P(LogApplication_notify_UT, LogApplication_notify_UT)
     stub.set(ADDR(LogFileParser, parseByApp), LogFileParser_parseByApp);
     stub.set(ADDR(LogFileParser, parseByNormal), LogFileParser_parseByNormal);
     stub.set(ADDR(LogFileParser, parseByKwin), LogFileParser_parseByKwin);
+    stub.set(ADDR(DebugTimeManager, beginPointLinux), stub_beginPointLinux);
     stub.set(ADDR(LogCollectorMain, handleApplicationTabEventNotify), LogApplication_notify_mainWindow_handleApplicationTabEventNotify_result_Func);
 
     LogApplication *p = new LogApplication(argc, argv);
     EXPECT_NE(p, nullptr);
     LogApplication_notify_UT_Param param = GetParam();
+
+    // 真正构造一个 LogCollectorMain 并赋给 m_mainWindow，确保 notify 中
+    // handleApplicationTabEventNotify 转发分支被实际执行（而非空指针跳过）。
+    LogCollectorMain *mainWindow = nullptr;
+    if (param.isMainWindow) {
+        mainWindow = new LogCollectorMain(nullptr);
+    }
+    p->m_mainWindow = mainWindow;
+
     if (param.isKeyPress) {
         int key = param.isKeyTab ? Qt::Key_Tab : Qt::Key_Left;
         QKeyEvent keyEvent(QEvent::KeyPress, key, Qt::NoModifier);
         LogApplication_notify_mainWindow_handleApplicationTabEventNotify_result = param.isSucces;
-        p->m_mainWindow = param.isMainWindow ? p->m_mainWindow : nullptr;
-        p->notify(nullptr, &keyEvent);
+        EXPECT_NO_FATAL_FAILURE(p->notify(nullptr, &keyEvent));
     } else {
         QEvent *e = new QEvent(QEvent::None);
-        p->notify(nullptr, e);
+        EXPECT_NO_FATAL_FAILURE(p->notify(nullptr, e));
         delete e;
     }
 
-    p->deleteLater();
+    if (mainWindow) {
+        delete mainWindow;
+    }
+    // QApplication 常驻：删除后后续建 QWidget 的用例会 qFatal
 }
